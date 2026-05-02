@@ -150,7 +150,7 @@ describe('POST /api/conversations/[id]/messages/stream', () => {
 
     // Mock a non-streaming chain (fallback path)
     mockGetProviderChain.mockReturnValue({
-      providers: [],
+      getPrimaryStreamingProvider: () => null,
       generateResponse: jest.fn().mockResolvedValue({ content: 'AI response' }),
     });
 
@@ -168,7 +168,7 @@ describe('POST /api/conversations/[id]/messages/stream', () => {
     mockMessage.create.mockResolvedValue({ id: 'm1' });
 
     mockGetProviderChain.mockReturnValue({
-      providers: [],
+      getPrimaryStreamingProvider: () => null,
       generateResponse: jest.fn().mockResolvedValue({ content: 'response' }),
     });
 
@@ -194,7 +194,7 @@ describe('POST /api/conversations/[id]/messages/stream', () => {
       .mockResolvedValueOnce({ id: 'am1' });   // assistant message
 
     mockGetProviderChain.mockReturnValue({
-      providers: [],
+      getPrimaryStreamingProvider: () => null,
       generateResponse: jest.fn().mockResolvedValue({ content: 'AI says hello' }),
     });
 
@@ -231,9 +231,9 @@ describe('POST /api/conversations/[id]/messages/stream', () => {
     }
 
     mockGetProviderChain.mockReturnValue({
-      providers: [{
+      getPrimaryStreamingProvider: () => ({
         generateStreamingResponse: jest.fn().mockReturnValue(fakeStream()),
-      }],
+      }),
     });
 
     const req = createRequest({ content: 'hello' });

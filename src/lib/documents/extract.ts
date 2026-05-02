@@ -42,6 +42,7 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
   // Try pdf-parse first (optional dependency)
   try {
     // Dynamic import so it doesn't fail at module load if not installed
+    // @ts-expect-error pdf-parse has no type declarations
     const pdfParse = (await import('pdf-parse')).default;
     const result = await pdfParse(buffer);
     return result.text;

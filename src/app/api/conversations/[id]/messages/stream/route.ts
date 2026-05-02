@@ -67,11 +67,10 @@ export async function POST(
 
       try {
         const chain = LLMProviderFactory.getProviderChain();
-        const primaryProvider = (chain as { providers?: Array<{ generateStreamingResponse?: unknown }> }).providers?.[0];
+        const streamingProvider = chain.getPrimaryStreamingProvider();
 
-        if (primaryProvider && typeof primaryProvider.generateStreamingResponse === 'function') {
-          // Use streaming
-          const gen = (primaryProvider as { generateStreamingResponse: (msgs: typeof contextMessages, opts?: { temperature?: number; maxTokens?: number }) => AsyncGenerator<string> }).generateStreamingResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
+        if (streamingProvider && streamingProvider.generateStreamingResponse) {
+          const gen = streamingProvider.generateStreamingResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
           for await (const chunk of gen) {
             fullContent += chunk;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`));

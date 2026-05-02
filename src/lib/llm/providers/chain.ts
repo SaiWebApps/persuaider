@@ -79,6 +79,15 @@ export class LLMProviderChain implements LLMProvider {
     return this.providers.map(p => p.name);
   }
 
+  getPrimaryStreamingProvider(): LLMProvider | null {
+    for (const provider of this.providers) {
+      if (typeof provider.generateStreamingResponse === 'function') {
+        return provider;
+      }
+    }
+    return null;
+  }
+
   /**
    * Emit a chain event to the callback if configured
    */
