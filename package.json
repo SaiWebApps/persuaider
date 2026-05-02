@@ -24,10 +24,10 @@
     "generate-password": "^1.7.1",
     "next": "16.1.3",
     "next-auth": "^5.0.0-beta.30",
+    "nodemailer": "^7.0.13",
     "openai": "^6.16.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "resend": "^6.7.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
@@ -39,6 +39,7 @@
     "@types/generate-password": "^1.5.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/selenium-webdriver": "^4.35.5",

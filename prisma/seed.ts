@@ -23,13 +23,14 @@ async function main() {
 
   const systemUser = await prisma.user.upsert({
     where: { email: 'system@persuaider.local' },
-    update: { role: 'admin' },
+    update: { role: 'admin', emailVerified: new Date() },
     create: {
       email: 'system@persuaider.local',
       username: 'system',
       passwordHash: hashedPassword,
       role: 'admin',
       provider: 'credentials',
+      emailVerified: new Date(),
     },
   });
 
@@ -39,12 +40,13 @@ async function main() {
   const demoPassword = await bcrypt.hash('demo123', 10);
   const demoUser = await prisma.user.upsert({
     where: { email: 'demo@persuaider.com' },
-    update: {},
+    update: { emailVerified: new Date() },
     create: {
       email: 'demo@persuaider.com',
       username: 'Demo User',
       passwordHash: demoPassword,
       provider: 'credentials',
+      emailVerified: new Date(),
     },
   });
 
@@ -54,13 +56,14 @@ async function main() {
   const adminPassword = await bcrypt.hash('admin123', 10);
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@persuaider.local' },
-    update: { role: 'admin', passwordHash: adminPassword },
+    update: { role: 'admin', passwordHash: adminPassword, emailVerified: new Date() },
     create: {
       email: 'admin@persuaider.local',
       username: 'Admin',
       passwordHash: adminPassword,
       role: 'admin',
       provider: 'credentials',
+      emailVerified: new Date(),
     },
   });
 

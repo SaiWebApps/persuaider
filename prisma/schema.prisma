@@ -12,6 +12,7 @@ model User {
   email               String         @unique
   username            String         @unique
   passwordHash        String?        // null for OAuth-only users
+  emailVerified       DateTime?      // null = unverified, timestamp = when verified
   role                String         @default("user") // "user" | "admin"
   provider            String?        // "credentials" | "google" | "microsoft"
   providerAccountId   String?
@@ -21,6 +22,8 @@ model User {
   scenarios           Scenario[]
   conversations       Conversation[]
   scenarioMemberships UserScenario[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   @@map("users")
 }
@@ -34,8 +37,9 @@ model Scenario {
   initialGreeting     String?
   evaluationCriteria  String         // JSON stored as text (SQLite doesn't support Json natively in all cases)
   winCondition        String         // JSON stored as text
-  visibility          String         @default("unlisted") // "public" | "unlisted"
+  visibility          String         @default("public") // "public" | "unlisted"
   joinCode            String         @unique
+  accessCode          String?        // null = open (anyone can join), non-null = restricted (must provide this code)
   sourceDocument      String?
   tags                String         @default("[]") // JSON array stored as text (SQLite has no native array)
   status              String         @default("draft") // "draft" | "published" | "archived"
@@ -180,4 +184,31 @@ model SourceFile {
 
   @@map("source_files")
   @@index([scenarioId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+  @@index([userId])
 }

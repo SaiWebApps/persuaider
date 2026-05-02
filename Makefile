@@ -83,8 +83,11 @@ init-env:
 		echo "ANTHROPIC_API_KEY=\"\"" >> .env.local; \
 		echo "OPENAI_API_KEY=\"\"" >> .env.local; \
 		echo "" >> .env.local; \
-		echo "# Email Service (optional for local dev)" >> .env.local; \
-		echo "RESEND_API_KEY=\"\"" >> .env.local; \
+		echo "# Email / SMTP (optional for local dev)" >> .env.local; \
+		echo "SMTP_HOST=\"\"" >> .env.local; \
+		echo "SMTP_PORT=\"587\"" >> .env.local; \
+		echo "SMTP_USER=\"\"" >> .env.local; \
+		echo "SMTP_PASS=\"\"" >> .env.local; \
 		echo "EMAIL_FROM=\"noreply@localhost\"" >> .env.local; \
 		echo "" >> .env.local; \
 		echo "Created .env.local - run 'make set-keys' to configure API keys interactively"; \
@@ -123,15 +126,6 @@ set-keys:
 			echo "OPENAI_API_KEY=\"$$OPENAI_KEY\"" >> .env.local; \
 		fi; \
 		echo "  Set OPENAI_API_KEY"; \
-	fi; \
-	read -p "Resend API Key (email, optional): " RESEND_KEY; \
-	if [ -n "$$RESEND_KEY" ]; then \
-		if grep -q "^RESEND_API_KEY=" .env.local 2>/dev/null; then \
-			sed -i '' "s|^RESEND_API_KEY=.*|RESEND_API_KEY=\"$$RESEND_KEY\"|" .env.local; \
-		else \
-			echo "RESEND_API_KEY=\"$$RESEND_KEY\"" >> .env.local; \
-		fi; \
-		echo "  Set RESEND_API_KEY"; \
 	fi; \
 	echo ""; \
 	echo "Keys configured. Run 'make dev' to start."

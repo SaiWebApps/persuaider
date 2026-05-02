@@ -36,6 +36,18 @@ jest.mock('next-auth/providers/credentials', () => {
   };
 });
 
+jest.mock('next-auth/providers/google', () => {
+  return function Google(config: Record<string, unknown>) {
+    return { id: 'google', name: 'Google', type: 'oidc', options: config };
+  };
+});
+
+jest.mock('next-auth/providers/microsoft-entra-id', () => {
+  return function MicrosoftEntraID(config: Record<string, unknown>) {
+    return { id: 'microsoft-entra-id', name: 'Microsoft Entra ID', type: 'oidc', options: config };
+  };
+});
+
 import { authConfig } from '../config';
 
 beforeEach(() => {
@@ -97,22 +109,23 @@ describe('authorized callback', () => {
 describe('jwt callback', () => {
   const jwt = authConfig.callbacks!.jwt! as (args: {
     token: Record<string, unknown>;
-    user?: { id?: string; role?: string };
-  }) => Record<string, unknown>;
+    user?: { id?: string; role?: string; email?: string };
+    account?: { provider: string; providerAccountId?: string } | null;
+  }) => Promise<Record<string, unknown>>;
 
-  it('sets id and role from user on sign-in', () => {
-    const result = jwt({ token: {}, user: { id: 'u1', role: 'admin' } });
+  it('sets id and role from user on credentials sign-in', async () => {
+    const result = await jwt({ token: {}, user: { id: 'u1', role: 'admin' }, account: { provider: 'credentials' } });
     expect(result.id).toBe('u1');
     expect(result.role).toBe('admin');
   });
 
-  it('defaults role to user when not provided', () => {
-    const result = jwt({ token: {}, user: { id: 'u1' } });
+  it('defaults role to user when not provided', async () => {
+    const result = await jwt({ token: {}, user: { id: 'u1' }, account: { provider: 'credentials' } });
     expect(result.role).toBe('user');
   });
 
-  it('preserves token on subsequent calls', () => {
-    const result = jwt({ token: { id: 'u1', role: 'admin' } });
+  it('preserves token on subsequent calls', async () => {
+    const result = await jwt({ token: { id: 'u1', role: 'admin' } });
     expect(result.id).toBe('u1');
   });
 });
