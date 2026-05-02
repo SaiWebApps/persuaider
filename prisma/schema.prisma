@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String         @id @default(cuid())
+  email               String         @unique
+  username            String         @unique
+  passwordHash        String?        // null for OAuth-only users
+  role                String         @default("user") // "user" | "admin"
+  provider            String?        // "credentials" | "google" | "microsoft"
+  providerAccountId   String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  scenarios           Scenario[]
+  conversations       Conversation[]
+  scenarioMemberships UserScenario[]
+
+  @@map("users")
+}
+
+model Scenario {
+  id                  String         @id @default(cuid())
+  title               String
+  description         String
+  userRole            String
+  aiRole              String
+  initialGreeting     String?
+  evaluationCriteria  String         // JSON stored as text (SQLite doesn't support Json natively in all cases)
+  winCondition        String         // JSON stored as text
+  visibility          String         @default("unlisted") // "public" | "unlisted"
+  joinCode            String         @unique
+  sourceDocument      String?
+  tags                String         @default("[]") // JSON array stored as text (SQLite has no native array)
+  status              String         @default("draft") // "draft" | "published" | "archived"
+  forkedFromId        String?
+  inspirationCount    Int            @default(0)
+  createdById         String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  contextNotes        String?        // Free-text constraints/requirements from scenario creator
+
+  forkedFrom          Scenario?      @relation("ScenarioForks", fields: [forkedFromId], references: [id], onDelete: SetNull)
+  forks               Scenario[]     @relation("ScenarioForks")
+  createdBy           User           @relation(fields: [createdById], references: [id])
+  personas            Persona[]
+  roles               Role[]
+  sourceFiles         SourceFile[]
+  conversations       Conversation[]
+  members             UserScenario[]
+
+  @@map("scenarios")
+  @@index([createdById])
+  @@index([status])
+  @@index([visibility, status])
+  @@index([joinCode])
+  @@index([inspirationCount])
+}
+
+model UserScenario {
+  id          String   @id @default(cuid())
+  userId      String
+  scenarioId  String
+  joinedAt    DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario    Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scenarioId])
+  @@map("user_scenarios")
+}
+
+model Persona {
+  id              String         @id @default(cuid())
+  scenarioId      String
+  roleId          String?        // Links persona to a formal Role (null for legacy scenarios)
+  name            String
+  description     String
+  roleType        String
+  initialGreeting String?
+  characteristics String?        // JSON stored as text
+  strategyMemory  String?        // JSON stored as text; placeholder for future cross-conversation learning
+  displayOrder    Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  scenario        Scenario       @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  role            Role?          @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  conversations   Conversation[]
+
+  @@map("personas")
+  @@index([scenarioId])
+  @@index([roleId])
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  userId      String
+  personaId   String
+  scenarioId  String
+  status      String    @default("in_progress")
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  metadata    String?   // JSON stored as text
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  persona     Persona   @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  scenario    Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  summary     Summary?
+
+  @@map("conversations")
+  @@index([userId])
+  @@index([personaId])
+  @@index([scenarioId])
+  @@index([status])
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  conversationId  String
+  role            String       // "user" or "assistant"
+  content         String
+  mood            String?      // null for user messages; one of MoodType values for assistant messages
+  createdAt       DateTime     @default(now())
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+  @@index([conversationId])
+}
+
+model Summary {
+  id                String       @id @default(cuid())
+  conversationId    String       @unique
+  overallScore      Int?         // 0-100
+  winningArguments  String       // JSON stored as text
+  llmFeedback       String?      // JSON: { whatWentWell, whatToImprove, specificSuggestions }
+  frameworkScores   String?      // JSON: per-framework breakdown from LLM
+  generatedAt       DateTime     @default(now())
+
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("summaries")
+}
+
+model Role {
+  id           String    @id @default(cuid())
+  scenarioId   String
+  name         String           // e.g. "Buyer for TechCorp"
+  description  String           // Full role brief, confidential info for this side
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  scenario     Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  personas     Persona[]
+
+  @@map("roles")
+  @@index([scenarioId])
+}
+
+model SourceFile {
+  id           String   @id @default(cuid())
+  scenarioId   String
+  filename     String          // Original filename
+  storagePath  String          // Path on disk, e.g. "uploads/scenarios/abc123.pdf"
+  mimeType     String          // "application/pdf", "image/png", etc.
+  sizeBytes    Int
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@map("source_files")
+  @@index([scenarioId])
+}
