@@ -35,6 +35,7 @@ help:
 	@echo "🧪 Testing:"
 	@echo "  make test          - Run ALL tests (unit + Selenium E2E + Playwright E2E)"
 	@echo "  make test-unit     - Run unit tests only (fast, no server needed)"
+	@echo "  make test-smoke    - Run production smoke test against live URL"
 	@echo "  make test-e2e      - Run E2E Selenium tests only (headless, auto-starts server)"
 	@echo "  make test-e2e-visible - Run E2E tests with visible browser (for debugging)"
 	@echo "  make test-e2e-pw   - Run Playwright functional tests (headless, auto-starts server)"
@@ -269,6 +270,12 @@ test-unit: ensure-deps
 	@echo "🧪 Running unit tests..."
 	npm test
 	@echo "✅ Unit tests complete"
+
+# Run production smoke test against live URL
+test-smoke:
+	@echo "🔥 Running production smoke test..."
+	PRODUCTION_URL="https://persuaider.vercel.app" npx tsx e2e/smoke/production.ts
+	@echo "✅ Smoke test complete"
 
 # Run E2E Selenium tests only (headless mode, auto-starts server)
 test-e2e: ensure-deps init-env ensure-db
