@@ -8,6 +8,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Check email verification
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { emailVerified: true },
+  });
+  if (!currentUser || !currentUser.emailVerified) {
+    return NextResponse.json({ error: 'Email not verified' }, { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q')?.trim();
 

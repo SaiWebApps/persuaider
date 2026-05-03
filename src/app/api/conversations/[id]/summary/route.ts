@@ -19,6 +19,18 @@ export async function POST(
       );
     }
 
+    // Check email verification
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { emailVerified: true },
+    });
+    if (!currentUser || !currentUser.emailVerified) {
+      return NextResponse.json(
+        { error: 'Email not verified' },
+        { status: 403 }
+      );
+    }
+
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       include: {

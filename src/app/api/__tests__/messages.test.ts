@@ -19,12 +19,16 @@ const mockConversation = {
 const mockMessage = {
   create: jest.fn(),
 };
+const mockUserDb = {
+  findUnique: jest.fn(),
+};
 
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
     return {
       conversation: mockConversation,
       message: mockMessage,
+      user: mockUserDb,
     };
   },
 }));
@@ -87,7 +91,11 @@ function makeConversation(overrides: Record<string, unknown> = {}) {
 }
 
 describe('POST /api/conversations/[id]/messages', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Default: user is verified
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
+  });
 
   // ---- Auth checks ----
 

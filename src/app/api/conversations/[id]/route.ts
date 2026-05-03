@@ -88,6 +88,14 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
+    const validStatuses = ['in_progress', 'completed', 'abandoned'];
+    if (!status || !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: 'Invalid status. Must be one of: in_progress, completed, abandoned' },
+        { status: 400 }
+      );
+    }
+
     const conversation = await prisma.conversation.findUnique({
       where: { id },
     });

@@ -19,12 +19,16 @@ const mockSummary = {
   create: jest.fn(),
   findUnique: jest.fn(),
 };
+const mockUserDb = {
+  findUnique: jest.fn(),
+};
 
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
     return {
       conversation: mockConversation,
       summary: mockSummary,
+      user: mockUserDb,
     };
   },
 }));
@@ -72,6 +76,7 @@ function createParams(id: string): { params: Promise<{ id: string }> } {
 describe('POST /api/conversations/[id]/summary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
   });
 
   it('returns 401 when not authenticated', async () => {

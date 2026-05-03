@@ -24,6 +24,10 @@ export async function POST(
     return new Response(JSON.stringify({ error: 'Message content is required' }), { status: 400 });
   }
 
+  if (content.trim().length > 2000) {
+    return new Response(JSON.stringify({ error: 'Message too long. Maximum 2000 characters.' }), { status: 400 });
+  }
+
   const conversation = await prisma.conversation.findUnique({
     where: { id },
     include: {

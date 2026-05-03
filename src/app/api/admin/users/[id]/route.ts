@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { requireAdmin } from '@/lib/auth/admin';
 import { prisma } from '@/lib/db/client';
 import * as bcrypt from 'bcryptjs';
@@ -88,6 +89,12 @@ export async function DELETE(
   if (denied) return denied;
 
   const { id } = await params;
+
+  // Prevent admin from deleting themselves
+  const session = await auth();
+  if (session && session.user.id === id) {
+    return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
+  }
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {

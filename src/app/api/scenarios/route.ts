@@ -9,6 +9,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Check email verification
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { emailVerified: true },
+  });
+  if (!currentUser || !currentUser.emailVerified) {
+    return NextResponse.json({ error: 'Email not verified' }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const { title, description, userRole, aiRole, personas, accessCode } = body;

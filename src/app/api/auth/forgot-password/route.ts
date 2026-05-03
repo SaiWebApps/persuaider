@@ -15,19 +15,24 @@ export async function POST(request: Request) {
     const user = await prisma.user.findUnique({ where: { email: email.trim() } });
 
     if (user) {
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      // Do not create reset token for OAuth-only users (no password to reset)
+      if (user.passwordHash === null) {
+        // Return 200 to prevent enumeration, but don't send email or create token
+      } else {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      await prisma.passwordResetToken.create({
-        data: {
-          token,
-          userId: user.id,
-          expiresAt,
-        },
-      });
+        await prisma.passwordResetToken.create({
+          data: {
+            token,
+            userId: user.id,
+            expiresAt,
+          },
+        });
 
-      const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
-      await sendPasswordResetEmail(user.email, resetUrl);
+        const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
+        await sendPasswordResetEmail(user.email, resetUrl);
+      }
     }
 
     return NextResponse.json({

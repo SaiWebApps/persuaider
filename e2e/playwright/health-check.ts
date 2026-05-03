@@ -1,17 +1,24 @@
 /**
- * LLM Health Check for Playwright E2E Tests
+ * LLM Health Check
  *
- * Verifies that at least one LLM provider is accessible before running tests.
- * Prevents wasting 10+ minutes on silent timeouts when API keys are missing or invalid.
+ * Validates EVERY configured LLM provider key individually.
+ * A dead key in the fallback chain is a silent bug — this catches it.
  */
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
+export interface ProviderStatus {
+  name: string;
+  envVar: string;
+  status: 'pass' | 'fail' | 'not_configured';
+  error?: string;
+}
+
 export interface HealthCheckResult {
-  available: boolean;
-  provider: string | null;
-  errors: string[];
+  allConfiguredPass: boolean;
+  anyAvailable: boolean;
+  providers: ProviderStatus[];
 }
 
 interface ProviderConfig {
@@ -30,7 +37,6 @@ function parseEnvFile(filePath: string): Record<string, string> {
       const match = trimmed.match(/^([A-Za-z_][A-Za-z_0-9]*)=(.*)$/);
       if (match) {
         let value = match[2];
-        // Strip surrounding quotes
         if (
           (value.startsWith('"') && value.endsWith('"')) ||
           (value.startsWith("'") && value.endsWith("'"))
@@ -115,32 +121,23 @@ export async function checkLLMHealth(): Promise<HealthCheckResult> {
   const envPath = resolve(__dirname, '../../.env.local');
   const env = parseEnvFile(envPath);
 
-  const errors: string[] = [];
-  const configuredProviders: ProviderConfig[] = [];
+  const providers: ProviderStatus[] = [];
 
+  // Check EVERY provider, not just the first one that works
   for (const provider of PROVIDERS) {
     const key = env[provider.envVar];
     if (!key || key.trim() === '') {
-      errors.push(`${provider.name}: ${provider.envVar} not set or empty`);
-    } else {
-      configuredProviders.push(provider);
+      providers.push({ name: provider.name, envVar: provider.envVar, status: 'not_configured' });
+      continue;
     }
-  }
 
-  if (configuredProviders.length === 0) {
-    return { available: false, provider: null, errors };
-  }
-
-  // Try each configured provider. Return as soon as one succeeds.
-  for (const provider of configuredProviders) {
-    const key = env[provider.envVar]!;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
       await provider.check(key, controller.signal);
       clearTimeout(timeout);
-      return { available: true, provider: provider.name, errors: [] };
+      providers.push({ name: provider.name, envVar: provider.envVar, status: 'pass' });
     } catch (err: unknown) {
       clearTimeout(timeout);
       const message =
@@ -149,34 +146,45 @@ export async function checkLLMHealth(): Promise<HealthCheckResult> {
             ? 'Request timed out (5s)'
             : err.message
           : String(err);
-      errors.push(`${provider.name}: ${message}`);
+      providers.push({ name: provider.name, envVar: provider.envVar, status: 'fail', error: message });
     }
   }
 
-  return { available: false, provider: null, errors };
+  const configured = providers.filter(p => p.status !== 'not_configured');
+  const allConfiguredPass = configured.length > 0 && configured.every(p => p.status === 'pass');
+  const anyAvailable = configured.some(p => p.status === 'pass');
+
+  return { allConfiguredPass, anyAvailable, providers };
 }
 
-// Allow standalone execution: `npx tsx e2e/playwright/health-check.ts`
+// Standalone execution: `npx tsx e2e/playwright/health-check.ts`
 if (require.main === module) {
   (async () => {
-    console.log('LLM Health Check');
-    console.log('================');
-    console.log('');
+    console.log('LLM Provider Health Check');
+    console.log('=========================\n');
 
     const result = await checkLLMHealth();
 
-    if (result.available) {
-      console.log(`Status: PASS`);
-      console.log(`Provider: ${result.provider}`);
-    } else {
-      console.log(`Status: FAIL`);
-      console.log('');
-      console.log('Errors:');
-      for (const err of result.errors) {
-        console.log(`  - ${err}`);
+    for (const p of result.providers) {
+      const icon = p.status === 'pass' ? '✅' : p.status === 'fail' ? '❌' : '⬚';
+      const detail = p.status === 'not_configured' ? 'not configured' : p.status === 'pass' ? 'OK' : p.error;
+      console.log(`  ${icon} ${p.name} (${p.envVar}): ${detail}`);
+    }
+
+    console.log('');
+
+    if (result.allConfiguredPass) {
+      console.log('Result: ALL configured providers are healthy.');
+      process.exit(0);
+    } else if (result.anyAvailable) {
+      console.log('Result: DEGRADED — some configured providers are broken:');
+      for (const p of result.providers.filter(p => p.status === 'fail')) {
+        console.log(`  ❌ ${p.name}: ${p.error}`);
       }
-      console.log('');
-      console.log('E2E tests require at least one working LLM provider.');
+      console.log('\nThe app will work via fallback, but fix the broken keys.');
+      process.exit(1);
+    } else {
+      console.log('Result: FAIL — no working LLM provider.');
       console.log('Add a valid API key to .env.local and try again.');
       process.exit(1);
     }

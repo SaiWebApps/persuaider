@@ -14,6 +14,18 @@ export async function GET() {
       );
     }
 
+    // Check email verification
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { emailVerified: true },
+    });
+    if (!currentUser || !currentUser.emailVerified) {
+      return NextResponse.json(
+        { error: 'Email not verified' },
+        { status: 403 }
+      );
+    }
+
     const conversations = await prisma.conversation.findMany({
       where: { userId: session.user.id },
       include: {
@@ -58,6 +70,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Check email verification
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { emailVerified: true },
+    });
+    if (!currentUser || !currentUser.emailVerified) {
+      return NextResponse.json(
+        { error: 'Email not verified' },
+        { status: 403 }
       );
     }
 

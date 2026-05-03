@@ -27,6 +27,9 @@ const mockPersona = {
 const mockMessage = {
   create: jest.fn(),
 };
+const mockUserDb = {
+  findUnique: jest.fn(),
+};
 
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
@@ -34,6 +37,7 @@ jest.mock('@/lib/db/client', () => ({
       conversation: mockConversation,
       persona: mockPersona,
       message: mockMessage,
+      user: mockUserDb,
     };
   },
 }));
@@ -50,6 +54,7 @@ function createRequest(body?: Record<string, unknown>): NextRequest {
 describe('GET /api/conversations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -89,6 +94,7 @@ describe('GET /api/conversations', () => {
 describe('POST /api/conversations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
   });
 
   it('returns 401 when not authenticated', async () => {

@@ -36,6 +36,20 @@ export async function POST(request: Request) {
     );
   }
 
+  if (email.length > 254) {
+    return NextResponse.json(
+      { error: 'Email must be 254 characters or fewer' },
+      { status: 400 }
+    );
+  }
+
+  if (username.length > 50) {
+    return NextResponse.json(
+      { error: 'Username must be 50 characters or fewer' },
+      { status: 400 }
+    );
+  }
+
   const existing = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
   });

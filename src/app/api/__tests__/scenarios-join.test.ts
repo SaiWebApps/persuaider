@@ -7,10 +7,11 @@ jest.mock('@/lib/auth', () => ({ auth: () => mockAuthFn() }));
 
 const mockScenario = { findUnique: jest.fn() };
 const mockUserScenario = { findUnique: jest.fn(), create: jest.fn() };
+const mockUserDb = { findUnique: jest.fn() };
 
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
-    return { scenario: mockScenario, userScenario: mockUserScenario };
+    return { scenario: mockScenario, userScenario: mockUserScenario, user: mockUserDb };
   },
 }));
 
@@ -25,7 +26,10 @@ function req(body: Record<string, unknown>) {
 }
 
 describe('POST /api/scenarios/join', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
+  });
 
   it('returns 401 when not authenticated', async () => {
     mockAuthFn.mockResolvedValue(null);

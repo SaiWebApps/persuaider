@@ -21,12 +21,31 @@ export async function POST(
       );
     }
 
+    // Check email verification
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { emailVerified: true },
+    });
+    if (!currentUser || !currentUser.emailVerified) {
+      return NextResponse.json(
+        { error: 'Email not verified' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { content } = body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return NextResponse.json(
         { error: 'Message content is required' },
+        { status: 400 }
+      );
+    }
+
+    if (content.trim().length > 2000) {
+      return NextResponse.json(
+        { error: 'Message too long. Maximum 2000 characters.' },
         { status: 400 }
       );
     }

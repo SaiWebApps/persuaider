@@ -50,8 +50,16 @@ export async function POST(request: Request) {
       },
     });
 
-    const verifyUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`;
-    await sendVerificationEmail(user.email, verifyUrl);
+    try {
+      const verifyUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`;
+      await sendVerificationEmail(user.email, verifyUrl);
+    } catch (emailError) {
+      // Rollback: delete the token and user if email send fails
+      await prisma.emailVerificationToken.deleteMany({ where: { userId: user.id } });
+      await prisma.user.delete({ where: { id: user.id } });
+      console.error('Email send failed, rolled back user creation:', emailError);
+      return NextResponse.json({ errors: { general: 'Registration failed' } }, { status: 500 });
+    }
 
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {

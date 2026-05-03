@@ -8,6 +8,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Check email verification
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { emailVerified: true },
+  });
+  if (!currentUser || !currentUser.emailVerified) {
+    return NextResponse.json({ error: 'Email not verified' }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const { joinCode, accessCode } = body;
@@ -38,9 +47,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You have already joined this scenario' }, { status: 409 });
     }
 
-    await prisma.userScenario.create({
-      data: { userId: session.user.id, scenarioId: scenario.id },
-    });
+    try {
+      await prisma.userScenario.create({
+        data: { userId: session.user.id, scenarioId: scenario.id },
+      });
+    } catch (createError: unknown) {
+      // Handle race condition: unique constraint violation (P2002)
+      if (createError && typeof createError === 'object' && 'code' in createError && (createError as { code: string }).code === 'P2002') {
+        return NextResponse.json({ error: 'You have already joined this scenario' }, { status: 409 });
+      }
+      throw createError;
+    }
 
     return NextResponse.json({
       scenario: { id: scenario.id, title: scenario.title, description: scenario.description },
