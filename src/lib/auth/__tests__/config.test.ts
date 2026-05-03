@@ -55,56 +55,8 @@ beforeEach(() => {
   _mockCompare = jest.fn();
 });
 
-describe('authorized callback', () => {
-  const callback = authConfig.callbacks!.authorized! as (args: {
-    auth: { user: { role?: string } } | null;
-    request: { nextUrl: URL };
-  }) => boolean | Response;
-
-  function check(pathname: string, auth: { user: { role?: string } } | null) {
-    return callback({ auth, request: { nextUrl: new URL(`http://localhost${pathname}`) } });
-  }
-
-  it('denies unauthenticated on /admin', () => {
-    expect(check('/admin', null)).toBe(false);
-  });
-
-  it('redirects non-admin from /admin to /dashboard', () => {
-    const result = check('/admin', { user: { role: 'user' } });
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).headers.get('location')).toContain('/dashboard');
-  });
-
-  it('allows admin on /admin', () => {
-    expect(check('/admin/users', { user: { role: 'admin' } })).toBe(true);
-  });
-
-  it('denies unauthenticated on /dashboard', () => {
-    expect(check('/dashboard', null)).toBe(false);
-  });
-
-  it('allows authenticated on /dashboard', () => {
-    expect(check('/dashboard', { user: { role: 'user' } })).toBe(true);
-  });
-
-  it('denies unauthenticated on /persona paths', () => {
-    expect(check('/persona/123/chat', null)).toBe(false);
-  });
-
-  it('redirects logged-in user from /login to /dashboard', () => {
-    const result = check('/login', { user: { role: 'user' } });
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).headers.get('location')).toContain('/dashboard');
-  });
-
-  it('allows unauthenticated on /login', () => {
-    expect(check('/login', null)).toBe(true);
-  });
-
-  it('allows unauthenticated on public paths', () => {
-    expect(check('/', null)).toBe(true);
-  });
-});
+// Note: authorized callback was moved to src/middleware.ts (lightweight edge function).
+// Auth routing tests are now covered by Playwright E2E tests.
 
 describe('jwt callback', () => {
   const jwt = authConfig.callbacks!.jwt! as (args: {

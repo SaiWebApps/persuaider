@@ -10,44 +10,6 @@ export const authConfig = {
     signIn: '/login',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
-      const isOnPersona = nextUrl.pathname.startsWith('/persona');
-      const isOnAdmin = nextUrl.pathname.startsWith('/admin');
-      const isOnLogin = nextUrl.pathname.startsWith('/login');
-      const isOnRegister = nextUrl.pathname.startsWith('/register');
-      const isOnForgotPassword = nextUrl.pathname.startsWith('/forgot-password');
-      const isOnResetPassword = nextUrl.pathname.startsWith('/reset-password');
-      const isOnVerifyEmail = nextUrl.pathname.startsWith('/verify-email');
-      const isResendVerification = nextUrl.pathname.startsWith('/api/auth/resend-verification');
-      const isAuthPage = isOnLogin || isOnRegister || isOnForgotPassword || isOnResetPassword || isOnVerifyEmail;
-
-      if (isOnAdmin) {
-        if (!isLoggedIn) return false;
-        if ((auth?.user as { role?: string })?.role !== 'admin') {
-          return Response.redirect(new URL('/dashboard', nextUrl));
-        }
-        return true;
-      } else if (isOnDashboard || isOnPersona) {
-        if (!isLoggedIn) return false;
-        // Redirect unverified users to verify-email page
-        const user = auth?.user as { emailVerified?: boolean } | undefined;
-        if (user?.emailVerified === false) {
-          return Response.redirect(new URL('/verify-email', nextUrl));
-        }
-        return true;
-      } else if (isLoggedIn && isAuthPage && !isOnVerifyEmail) {
-        return Response.redirect(new URL('/dashboard', nextUrl));
-      } else if (isLoggedIn && !isOnVerifyEmail && !isResendVerification && !isAuthPage) {
-        // For other protected pages, check email verification
-        const user = auth?.user as { emailVerified?: boolean } | undefined;
-        if (user?.emailVerified === false) {
-          return Response.redirect(new URL('/verify-email', nextUrl));
-        }
-      }
-      return true;
-    },
     async signIn({ user, account }) {
       if (account?.provider === 'google' || account?.provider === 'microsoft-entra-id') {
         const email = user.email;

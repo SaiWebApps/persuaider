@@ -3,6 +3,15 @@
  */
 
 /**
+ * Schema integration tests.
+ * These require a live PostgreSQL connection (DATABASE_URL must be set correctly).
+ * Skipped when DATABASE_URL points to SQLite or is unavailable.
+ */
+
+const isPostgres = process.env.DATABASE_URL?.startsWith('postgresql://') || process.env.DATABASE_URL?.startsWith('postgres://');
+const describeIfPostgres = isPostgres ? describe : describe.skip;
+
+/**
  * Integration tests for the Prisma schema: Role, SourceFile, and updated Persona models.
  * These tests use the actual SQLite database to verify the migration works correctly.
  */
@@ -44,7 +53,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('Scenario model - contextNotes field', () => {
+describeIfPostgres('Scenario model - contextNotes field', () => {
   afterEach(async () => {
     await prisma.sourceFile.deleteMany({ where: { scenarioId: testScenarioId } });
     await prisma.persona.deleteMany({ where: { scenarioId: testScenarioId } });
@@ -90,7 +99,7 @@ describe('Scenario model - contextNotes field', () => {
   });
 });
 
-describe('Role model', () => {
+describeIfPostgres('Role model', () => {
   beforeEach(async () => {
     await prisma.scenario.upsert({
       where: { id: testScenarioId },
@@ -171,7 +180,7 @@ describe('Role model', () => {
   });
 });
 
-describe('Persona model - roleId field', () => {
+describeIfPostgres('Persona model - roleId field', () => {
   beforeEach(async () => {
     await prisma.scenario.upsert({
       where: { id: testScenarioId },
@@ -282,7 +291,7 @@ describe('Persona model - roleId field', () => {
   });
 });
 
-describe('SourceFile model', () => {
+describeIfPostgres('SourceFile model', () => {
   beforeEach(async () => {
     await prisma.scenario.upsert({
       where: { id: testScenarioId },
@@ -378,7 +387,7 @@ describe('SourceFile model', () => {
   });
 });
 
-describe('Full scenario with roles, personas, and source files', () => {
+describeIfPostgres('Full scenario with roles, personas, and source files', () => {
   afterEach(async () => {
     await prisma.sourceFile.deleteMany({ where: { scenarioId: testScenarioId } });
     await prisma.persona.deleteMany({ where: { scenarioId: testScenarioId } });
