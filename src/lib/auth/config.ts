@@ -6,6 +6,8 @@ import * as bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/client';
 
 export const authConfig = {
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/login',
   },

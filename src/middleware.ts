@@ -11,7 +11,12 @@ export async function middleware(request: NextRequest) {
   const isAdminPage = pathname.startsWith('/admin');
   const isProtectedPage = pathname.startsWith('/dashboard') || pathname.startsWith('/persona');
 
-  const token = await getToken({ req: request });
+  const secureCookie = request.nextUrl.protocol === 'https:';
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    secureCookie,
+  });
   const isLoggedIn = !!token;
 
   if (isAdminPage) {

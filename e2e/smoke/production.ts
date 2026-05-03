@@ -73,13 +73,18 @@ async function runTests(): Promise<TestResult[]> {
 
   // Test 3: Credentials login against DB (proves DB connection works)
   try {
-    // First get CSRF token
+    // First get CSRF token and capture the set-cookie header
     const csrfRes = await fetchWithTimeout(`${PRODUCTION_URL}/api/auth/csrf`);
     const { csrfToken } = await csrfRes.json();
+    const csrfCookies = csrfRes.headers.getSetCookie?.() ?? [];
+    const cookieHeader = csrfCookies.map(c => c.split(';')[0]).join('; ');
 
     const res = await fetchWithTimeout(`${PRODUCTION_URL}/api/auth/callback/credentials`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
       body: new URLSearchParams({
         csrfToken,
         email: 'demo@persuaider.com',
@@ -104,8 +109,19 @@ async function runTests(): Promise<TestResult[]> {
 
   // Test 4: Google OAuth initiates correctly (should redirect to Google)
   try {
+    // Initiate OAuth via POST with CSRF token (NextAuth v5 requires this)
+    const csrfRes = await fetchWithTimeout(`${PRODUCTION_URL}/api/auth/csrf`);
+    const { csrfToken } = await csrfRes.json();
+    const csrfCookies = csrfRes.headers.getSetCookie?.() ?? [];
+    const cookieHeader = csrfCookies.map(c => c.split(';')[0]).join('; ');
+
     const res = await fetchWithTimeout(`${PRODUCTION_URL}/api/auth/signin/google`, {
-      method: 'GET',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+      body: new URLSearchParams({ csrfToken }).toString(),
     });
     // Should redirect (302) to accounts.google.com
     if (res.status === 302) {
