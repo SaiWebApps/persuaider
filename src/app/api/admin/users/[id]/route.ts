@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { requireAdmin } from '@/lib/auth/admin';
 import { prisma } from '@/lib/db/client';
-import * as bcrypt from 'bcryptjs';
-import generator from 'generate-password';
 
 export async function GET(
   request: NextRequest,
@@ -50,22 +48,10 @@ export async function PATCH(
   }
 
   if (body.resetPassword) {
-    const newPassword = generator.generate({
-      length: 12,
-      numbers: true,
-      uppercase: true,
-      lowercase: true,
-      strict: true,
-    });
-    updateData.passwordHash = await bcrypt.hash(newPassword, 10);
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: { id: true, email: true, username: true, role: true },
-    });
-
-    return NextResponse.json({ user, generatedPassword: newPassword });
+    return NextResponse.json(
+      { error: 'Password reset is managed through Clerk. Use the Clerk dashboard.' },
+      { status: 400 }
+    );
   }
 
   if (Object.keys(updateData).length === 0) {

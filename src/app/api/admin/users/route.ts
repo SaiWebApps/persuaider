@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/admin';
 import { prisma } from '@/lib/db/client';
-import * as bcrypt from 'bcryptjs';
-import generator from 'generate-password';
 
 export async function GET() {
   const denied = await requireAdmin();
@@ -61,23 +59,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const generatedPassword = generator.generate({
-    length: 12,
-    numbers: true,
-    uppercase: true,
-    lowercase: true,
-    strict: true,
-  });
-
-  const passwordHash = await bcrypt.hash(generatedPassword, 10);
-
   const user = await prisma.user.create({
     data: {
       email,
       username,
-      passwordHash,
       role: 'user',
-      provider: 'credentials',
     },
     select: {
       id: true,
@@ -88,5 +74,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ user, generatedPassword });
+  return NextResponse.json({ user });
 }

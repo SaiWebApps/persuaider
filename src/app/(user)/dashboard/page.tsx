@@ -13,18 +13,14 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  const currentUser = await prisma.user.findUnique({
-    where: { clerkId: session.user.id },
-    select: { id: true, username: true },
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { username: true },
   });
-
-  if (!currentUser) {
-    redirect('/login');
-  }
 
   // Fetch scenarios the user has joined
   const memberships = await prisma.userScenario.findMany({
-    where: { userId: currentUser.id },
+    where: { userId: session.user.id },
     include: {
       scenario: {
         include: {
@@ -44,7 +40,7 @@ export default async function DashboardPage() {
 
   // Fetch user's conversations to determine persona status
   const conversations = await prisma.conversation.findMany({
-    where: { userId: currentUser.id },
+    where: { userId: session.user.id },
     select: {
       id: true,
       personaId: true,
@@ -88,7 +84,7 @@ export default async function DashboardPage() {
             <h1 className="text-xl font-bold text-indigo-600">Persuaider</h1>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Welcome, {currentUser.username}
+                Welcome, {user?.username || 'User'}
               </span>
               {session.user.role === 'admin' && (
                 <Link

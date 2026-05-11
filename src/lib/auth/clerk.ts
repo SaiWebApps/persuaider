@@ -1,5 +1,6 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import type { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/client';
 
 export { currentUser };
 
@@ -16,10 +17,18 @@ export interface AuthSession {
 export async function getAuthSession(): Promise<AuthSession | null> {
   const { userId, sessionClaims } = await auth();
   if (!userId) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true, role: true },
+  });
+
+  if (!user) return null;
+
   return {
     user: {
-      id: userId,
-      role: (sessionClaims?.metadata as { role?: string })?.role || 'user',
+      id: user.id,
+      role: (sessionClaims?.metadata as { role?: string })?.role || user.role,
       emailVerified: true,
     },
   };
