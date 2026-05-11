@@ -1,4 +1,7 @@
-import NextAuth from 'next-auth';
-import { authConfig } from './config';
+import { getAuthSession, signOut, requireAdmin, requireVerifiedUser, isAdmin } from './clerk';
+import type { AuthSession } from './clerk';
 
-export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+export type { AuthSession };
+export { signOut, requireAdmin, requireVerifiedUser, isAdmin };
+
+export const auth = getAuthSession;

@@ -45,7 +45,7 @@ describe('EMAIL SYSTEM — SMTP misconfiguration and failures', () => {
         createTransport: (...args: unknown[]) => mockCreateTransport(...args),
       }));
 
-      const { sendPasswordResetEmail } = require('@/lib/email/index');
+      const { sendPasswordResetEmail } = jest.requireMock<typeof import('@/lib/email/index')>('@/lib/email/index');
       mockSendMail.mockResolvedValue({ messageId: 'ok' });
 
       await sendPasswordResetEmail('user@test.com', 'http://example.com/reset');
@@ -67,7 +67,7 @@ describe('EMAIL SYSTEM — SMTP misconfiguration and failures', () => {
         }),
       }));
 
-      const { sendPasswordResetEmail } = require('@/lib/email/index');
+      const { sendPasswordResetEmail } = jest.requireMock<typeof import('@/lib/email/index')>('@/lib/email/index');
 
       await expect(
         sendPasswordResetEmail('user@test.com', 'http://example.com/reset')
@@ -87,7 +87,7 @@ describe('EMAIL SYSTEM — SMTP misconfiguration and failures', () => {
         },
       }));
 
-      const { sendVerificationEmail } = require('@/lib/email/verification');
+      const { sendVerificationEmail } = jest.requireMock<typeof import('@/lib/email/verification')>('@/lib/email/verification');
 
       await expect(
         sendVerificationEmail('user@test.com', 'http://localhost:3000/verify?token=abc')
@@ -132,7 +132,7 @@ describe('EMAIL SYSTEM — Registration resilience when email fails', () => {
       sendVerificationEmail: jest.fn().mockRejectedValue(new Error('SMTP timeout')),
     }));
 
-    const { POST } = require('../auth/register/route');
+    const { POST } = jest.requireMock<typeof import('../auth/register/route')>('../auth/register/route');
 
     mockUser.findUnique.mockResolvedValue(null);
     mockUser.create.mockResolvedValue({ id: 'u1', email: 'new@test.com', username: 'newuser' });
@@ -197,7 +197,7 @@ describe('EMAIL SYSTEM — Resend verification flooding', () => {
       sendVerificationEmail: (...args: unknown[]) => mockSendVerification(...args),
     }));
 
-    const { POST } = require('../auth/resend-verification/route');
+    const { POST } = jest.requireMock<typeof import('../auth/resend-verification/route')>('../auth/resend-verification/route');
 
     mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
     mockUser2.findUnique.mockResolvedValue({ id: 'u1', email: 'user@test.com', emailVerified: null });
@@ -250,7 +250,7 @@ describe('EMAIL SYSTEM — Password reset for OAuth-only user', () => {
       }),
     }));
 
-    const { POST } = require('../auth/forgot-password/route');
+    const { POST } = jest.requireMock<typeof import('../auth/forgot-password/route')>('../auth/forgot-password/route');
 
     // OAuth user: has no passwordHash, provider is 'google'
     mockUser3.findUnique.mockResolvedValue({
@@ -301,7 +301,7 @@ describe('ADMIN PANEL — Non-admin access to admin endpoints', () => {
 
     mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
 
-    const { GET } = require('../admin/users/route');
+    const { GET } = jest.requireMock<typeof import('../admin/users/route')>('../admin/users/route');
     const res = await GET();
     expect(res.status).toBe(403);
     const data = await res.json();
@@ -320,7 +320,7 @@ describe('ADMIN PANEL — Non-admin access to admin endpoints', () => {
 
     mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
 
-    const { POST } = require('../admin/users/route');
+    const { POST } = jest.requireMock<typeof import('../admin/users/route')>('../admin/users/route');
     const request = new Request('http://localhost/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -340,8 +340,8 @@ describe('ADMIN PANEL — Non-admin access to admin endpoints', () => {
 
     mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
 
-    const { DELETE } = require('../admin/scenarios/[id]/route');
-    const { NextRequest } = require('next/server');
+    const { DELETE } = jest.requireMock<typeof import('../admin/scenarios/[id]/route')>('../admin/scenarios/[id]/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/scenarios/s1', { method: 'DELETE' });
     const res = await DELETE(req, { params: Promise.resolve({ id: 's1' }) });
     expect(res.status).toBe(403);
@@ -359,7 +359,7 @@ describe('ADMIN PANEL — Non-admin access to admin endpoints', () => {
 
     mockAuthFn.mockResolvedValue(null); // No session
 
-    const { GET } = require('../admin/users/route');
+    const { GET } = jest.requireMock<typeof import('../admin/users/route')>('../admin/users/route');
     const res = await GET();
     expect(res.status).toBe(401);
     const data = await res.json();
@@ -393,8 +393,8 @@ describe('ADMIN PANEL — Admin self-deletion', () => {
     mockUser.findUnique.mockResolvedValue({ id: 'admin-1', role: 'admin' });
     mockUser.delete.mockResolvedValue({ id: 'admin-1' });
 
-    const { DELETE } = require('../admin/users/[id]/route');
-    const { NextRequest } = require('next/server');
+    const { DELETE } = jest.requireMock<typeof import('../admin/users/[id]/route')>('../admin/users/[id]/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/users/admin-1', { method: 'DELETE' });
     const res = await DELETE(req, { params: Promise.resolve({ id: 'admin-1' }) });
 
@@ -433,8 +433,8 @@ describe('ADMIN PANEL — Last admin deletion', () => {
     mockUser.findUnique.mockResolvedValue({ id: 'a2', role: 'admin' });
     mockUser.delete.mockResolvedValue({ id: 'a2' });
 
-    const { DELETE } = require('../admin/users/[id]/route');
-    const { NextRequest } = require('next/server');
+    const { DELETE } = jest.requireMock<typeof import('../admin/users/[id]/route')>('../admin/users/[id]/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/users/a2', { method: 'DELETE' });
     const res = await DELETE(req, { params: Promise.resolve({ id: 'a2' }) });
 
@@ -475,7 +475,7 @@ describe('ADMIN PANEL — Extreme input lengths', () => {
       id: 'u-new', email: longEmail, username: 'x', role: 'user', createdAt: new Date(),
     });
 
-    const { POST } = require('../admin/users/route');
+    const { POST } = jest.requireMock<typeof import('../admin/users/route')>('../admin/users/route');
     const request = new Request('http://localhost/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -506,7 +506,7 @@ describe('ADMIN PANEL — Extreme input lengths', () => {
       id: 'u-new', email: 'x@test.com', username: longUsername, role: 'user', createdAt: new Date(),
     });
 
-    const { POST } = require('../admin/users/route');
+    const { POST } = jest.requireMock<typeof import('../admin/users/route')>('../admin/users/route');
     const request = new Request('http://localhost/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -559,7 +559,7 @@ describe('ADMIN PANEL — Scenario with empty personas array', () => {
       _count: { members: 0 },
     });
 
-    const { POST } = require('../admin/scenarios/route');
+    const { POST } = jest.requireMock<typeof import('../admin/scenarios/route')>('../admin/scenarios/route');
     const request = new Request('http://localhost/api/admin/scenarios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -602,7 +602,7 @@ describe('ADMIN PANEL — Scenario with empty personas array', () => {
       _count: { members: 0 },
     });
 
-    const { POST } = require('../admin/scenarios/route');
+    const { POST } = jest.requireMock<typeof import('../admin/scenarios/route')>('../admin/scenarios/route');
     const request = new Request('http://localhost/api/admin/scenarios', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -650,8 +650,8 @@ describe('ADMIN PANEL — Assign non-existent user to scenario', () => {
       })
     );
 
-    const { POST } = require('../admin/scenarios/[id]/assign/route');
-    const { NextRequest } = require('next/server');
+    const { POST } = jest.requireMock<typeof import('../admin/scenarios/[id]/assign/route')>('../admin/scenarios/[id]/assign/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/scenarios/s1/assign', {
       method: 'POST',
       body: JSON.stringify({ userId: 'non-existent-user-id' }),
@@ -682,8 +682,8 @@ describe('ADMIN PANEL — Assign non-existent user to scenario', () => {
       })
     );
 
-    const { POST } = require('../admin/scenarios/[id]/assign/route');
-    const { NextRequest } = require('next/server');
+    const { POST } = jest.requireMock<typeof import('../admin/scenarios/[id]/assign/route')>('../admin/scenarios/[id]/assign/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/scenarios/non-existent-scenario/assign', {
       method: 'POST',
       body: JSON.stringify({ userId: 'u1' }),
@@ -732,8 +732,8 @@ describe('DATA INTEGRITY — Deleting user with active conversations', () => {
     });
     mockUser.delete.mockResolvedValue({ id: 'u-active' });
 
-    const { DELETE } = require('../admin/users/[id]/route');
-    const { NextRequest } = require('next/server');
+    const { DELETE } = jest.requireMock<typeof import('../admin/users/[id]/route')>('../admin/users/[id]/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/users/u-active', { method: 'DELETE' });
     const res = await DELETE(req, { params: Promise.resolve({ id: 'u-active' }) });
 
@@ -773,8 +773,8 @@ describe('DATA INTEGRITY — Deleting scenario with active conversations', () =>
     });
     mockScenario.delete.mockResolvedValue({ id: 's-active' });
 
-    const { DELETE } = require('../admin/scenarios/[id]/route');
-    const { NextRequest } = require('next/server');
+    const { DELETE } = jest.requireMock<typeof import('../admin/scenarios/[id]/route')>('../admin/scenarios/[id]/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/admin/scenarios/s-active', { method: 'DELETE' });
     const res = await DELETE(req, { params: Promise.resolve({ id: 's-active' }) });
 
@@ -815,8 +815,8 @@ describe('DATA INTEGRITY — PDF export with null summary and null scores', () =
       },
     ]);
 
-    const { GET } = require('../export/pdf/route');
-    const { NextRequest } = require('next/server');
+    const { GET } = jest.requireMock<typeof import('../export/pdf/route')>('../export/pdf/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/export/pdf', { method: 'GET' });
     const res = await GET(req);
 
@@ -850,8 +850,8 @@ describe('DATA INTEGRITY — PDF export with null summary and null scores', () =
       },
     ]);
 
-    const { GET } = require('../export/pdf/route');
-    const { NextRequest } = require('next/server');
+    const { GET } = jest.requireMock<typeof import('../export/pdf/route')>('../export/pdf/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/export/pdf', { method: 'GET' });
     const res = await GET(req);
 
@@ -885,8 +885,8 @@ describe('DATA INTEGRITY — PDF export with null summary and null scores', () =
       },
     ]);
 
-    const { GET } = require('../export/pdf/route');
-    const { NextRequest } = require('next/server');
+    const { GET } = jest.requireMock<typeof import('../export/pdf/route')>('../export/pdf/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/export/pdf', { method: 'GET' });
     const res = await GET(req);
 
@@ -916,8 +916,8 @@ describe('DATA INTEGRITY — PDF export with null summary and null scores', () =
       },
     ]);
 
-    const { GET } = require('../export/pdf/route');
-    const { NextRequest } = require('next/server');
+    const { GET } = jest.requireMock<typeof import('../export/pdf/route')>('../export/pdf/route');
+    const { NextRequest } = jest.requireMock<typeof import('next/server')>('next/server');
     const req = new NextRequest('http://localhost/api/export/pdf', { method: 'GET' });
     const res = await GET(req);
 
@@ -995,7 +995,7 @@ describe('DATA INTEGRITY — Concurrent join race condition', () => {
       })
     );
 
-    const { POST } = require('../scenarios/join/route');
+    const { POST } = jest.requireMock<typeof import('../scenarios/join/route')>('../scenarios/join/route');
 
     const req1 = new Request('http://localhost/api/scenarios/join', {
       method: 'POST',

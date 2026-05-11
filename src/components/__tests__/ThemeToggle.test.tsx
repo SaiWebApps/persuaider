@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeToggle } from '../theme/ThemeToggle';
 
 // Mock the ThemeProvider context

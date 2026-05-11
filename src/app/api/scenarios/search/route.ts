@@ -30,8 +30,6 @@ export async function GET(request: NextRequest) {
   });
   const joinedSet = new Set(joinedIds.map(j => j.scenarioId));
 
-  const pattern = `%${query}%`;
-
   const scenarios = await prisma.scenario.findMany({
     where: {
       status: 'published',

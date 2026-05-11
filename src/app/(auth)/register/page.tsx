@@ -1,5 +1,9 @@
-import { RegisterForm } from '@/components/auth/RegisterForm';
+import { SignUp } from '@clerk/nextjs';
 
 export default function RegisterPage() {
-  return <RegisterForm />;
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <SignUp routing="hash" fallbackRedirectUrl="/dashboard" />
+    </div>
+  );
 }

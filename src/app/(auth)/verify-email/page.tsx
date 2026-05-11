@@ -1,8 +1,5 @@
-import { auth } from '@/lib/auth';
-import { VerifyEmailPrompt } from '@/components/auth/VerifyEmailPrompt';
+import { redirect } from 'next/navigation';
 
-export default async function VerifyEmailPage() {
-  const session = await auth();
-
-  return <VerifyEmailPrompt email={session?.user?.email} />;
+export default function VerifyEmailPage() {
+  redirect('/login');
 }

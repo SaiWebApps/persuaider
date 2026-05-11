@@ -36,7 +36,7 @@ describe('LLM_MODELS', () => {
   });
 
   it('model values are non-empty strings', () => {
-    for (const [key, value] of Object.entries(LLM_MODELS)) {
+    for (const value of Object.values(LLM_MODELS)) {
       expect(typeof value).toBe('string');
       expect(value.trim().length).toBeGreaterThan(0);
     }

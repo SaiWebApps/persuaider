@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@clerk/nextjs": "^7.3.3",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
     "@react-pdf/renderer": "^4.3.2",
@@ -29,9 +30,11 @@
     "openai": "^6.16.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "svix": "^1.60.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@clerk/testing": "^1.5.0",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",

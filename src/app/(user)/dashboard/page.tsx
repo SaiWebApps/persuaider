@@ -1,9 +1,10 @@
-import { auth, signOut } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/db/client';
 import { DashboardClient } from './DashboardClient';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { SignOutButton } from '@clerk/nextjs';
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -12,9 +13,18 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
+  const currentUser = await prisma.user.findUnique({
+    where: { clerkId: session.user.id },
+    select: { id: true, username: true },
+  });
+
+  if (!currentUser) {
+    redirect('/login');
+  }
+
   // Fetch scenarios the user has joined
   const memberships = await prisma.userScenario.findMany({
-    where: { userId: session.user.id },
+    where: { userId: currentUser.id },
     include: {
       scenario: {
         include: {
@@ -34,7 +44,7 @@ export default async function DashboardPage() {
 
   // Fetch user's conversations to determine persona status
   const conversations = await prisma.conversation.findMany({
-    where: { userId: session.user.id },
+    where: { userId: currentUser.id },
     select: {
       id: true,
       personaId: true,
@@ -78,7 +88,7 @@ export default async function DashboardPage() {
             <h1 className="text-xl font-bold text-indigo-600">Persuaider</h1>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Welcome, {session.user.name}
+                Welcome, {currentUser.username}
               </span>
               {session.user.role === 'admin' && (
                 <Link
@@ -89,19 +99,14 @@ export default async function DashboardPage() {
                 </Link>
               )}
               <ThemeToggle />
-              <form
-                action={async () => {
-                  'use server';
-                  await signOut();
-                }}
-              >
+              <SignOutButton>
                 <button
-                  type="submit"
+                  type="button"
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
                 >
                   Sign Out
                 </button>
-              </form>
+              </SignOutButton>
             </div>
           </div>
         </div>

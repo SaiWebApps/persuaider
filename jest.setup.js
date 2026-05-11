@@ -2,8 +2,8 @@ import '@testing-library/jest-dom';
 
 // Mock IntersectionObserver for components using infinite scroll
 class MockIntersectionObserver {
-  constructor(callback, options) {
-    // Store callback for potential triggering in tests
+  constructor() {
+    // IntersectionObserver mock for tests
   }
 
   observe() {}

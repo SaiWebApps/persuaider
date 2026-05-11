@@ -129,7 +129,7 @@ describe('POST /api/auth/reset-password', () => {
   });
 
   it('hashes the new password before storing', async () => {
-    const bcrypt = require('bcryptjs');
+    const bcrypt = jest.requireMock<typeof import('bcryptjs')>('bcryptjs');
     mockToken.findUnique.mockResolvedValue({
       token: 'valid-token',
       userId: 'u1',

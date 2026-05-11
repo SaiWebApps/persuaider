@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Button } from './Button';
+import Image from 'next/image';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -105,9 +105,11 @@ export function FileUpload({
 
       {previewUrl ? (
         <div className="relative">
-          <img
+          <Image
             src={previewUrl}
             alt="Preview"
+            width={128}
+            height={128}
             className="w-32 h-32 object-cover rounded-lg border border-gray-300"
           />
           <button

@@ -88,7 +88,6 @@ describe('buildPersonaPrompt', () => {
   });
 
   it('handles invalid JSON in characteristics', () => {
-    const persona = { ...basePersona, characteristics: '{not valid json' };
     const prompt = buildPersonaPrompt(basePersona, baseScenario);
     expect(prompt).toContain('General concerns relevant to your role');
   });

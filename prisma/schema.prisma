@@ -10,12 +10,13 @@ datasource db {
 
 model User {
   id                  String         @id @default(cuid())
+  clerkId             String?        @unique
   email               String         @unique
   username            String         @unique
-  passwordHash        String?        // null for OAuth-only users
-  emailVerified       DateTime?      // null = unverified, timestamp = when verified
-  role                String         @default("user") // "user" | "admin"
-  provider            String?        // "credentials" | "google" | "microsoft"
+  passwordHash        String?
+  emailVerified       DateTime?
+  role                String         @default("user")
+  provider            String?
   providerAccountId   String?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SessionProvider } from "@/components/auth/SessionProvider";
+import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
@@ -16,9 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <SessionProvider>
+        <ClerkProvider>
           <ThemeProvider>{children}</ThemeProvider>
-        </SessionProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

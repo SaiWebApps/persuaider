@@ -67,7 +67,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function generateHTMLReport(username: string, conversations: any[]): string {
+function generateHTMLReport(username: string, conversations: Array<{
+  persona: { name: string; description: string; roleType: string };
+  scenario: { title: string } | null;
+  summary: { overallScore: number | null; winningArguments: string | null } | null;
+  completedAt: Date | null;
+}>): string {
   const date = new Date().toLocaleDateString();
 
   let conversationsHTML = '';
@@ -93,7 +98,7 @@ function generateHTMLReport(username: string, conversations: any[]): string {
           ${winningArgs.length > 0 ? `
             <h4 style="margin-top: 20px; margin-bottom: 10px;">Key Arguments:</h4>
             <ul style="list-style: none; padding: 0;">
-              ${winningArgs.map((arg: any) => `
+              ${winningArgs.map((arg: { text?: string }) => `
                 <li style="margin-bottom: 10px; padding-left: 15px; border-left: 3px solid #4f46e5;">
                   <p style="margin-top: 5px;">${arg.text || JSON.stringify(arg)}</p>
                 </li>

@@ -97,7 +97,7 @@ describe('Modal', () => {
   });
 
   it('does not render footer section when footer prop is absent', () => {
-    const { container } = render(<Modal {...defaultProps} />);
+    render(<Modal {...defaultProps} />);
     // Footer div should not be present (it's conditionally rendered)
     const dialog = screen.getByRole('dialog');
     const children = dialog.children;

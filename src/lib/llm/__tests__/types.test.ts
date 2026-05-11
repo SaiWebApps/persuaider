@@ -12,7 +12,6 @@ import type {
   LLMMessage,
   LLMResponse,
   LLMOptions,
-  LLMProvider,
   FallbackConfig,
   RetryConfig,
 } from '../types';

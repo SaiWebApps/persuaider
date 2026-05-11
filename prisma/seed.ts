@@ -1,12 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import * as crypto from 'crypto';
 
 const prisma = new PrismaClient();
-
-function generateJoinCode(): string {
-  return crypto.randomBytes(4).toString('hex').toUpperCase();
-}
 
 async function main() {
   console.log('Seeding database...');

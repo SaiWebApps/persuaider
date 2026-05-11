@@ -38,7 +38,7 @@ describe('LLMProviderFactory', () => {
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
     process.env.OPENAI_API_KEY = 'test-openai-key';
 
-    const { LLMProviderFactory } = require('../providers/factory');
+    const { LLMProviderFactory } = jest.requireMock<typeof import('../providers/factory')>('../providers/factory');
     LLMProviderFactory.clearCache();
     const chain = LLMProviderFactory.getProviderChain();
     const providers = chain.getProviders();
@@ -51,7 +51,7 @@ describe('LLMProviderFactory', () => {
   it('initializes with only available providers', () => {
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 
-    const { LLMProviderFactory } = require('../providers/factory');
+    const { LLMProviderFactory } = jest.requireMock<typeof import('../providers/factory')>('../providers/factory');
     LLMProviderFactory.clearCache();
     const chain = LLMProviderFactory.getProviderChain();
     const providers = chain.getProviders();
@@ -60,7 +60,7 @@ describe('LLMProviderFactory', () => {
   });
 
   it('throws when no API keys are set', () => {
-    const { LLMProviderFactory } = require('../providers/factory');
+    const { LLMProviderFactory } = jest.requireMock<typeof import('../providers/factory')>('../providers/factory');
     LLMProviderFactory.clearCache();
 
     expect(() => LLMProviderFactory.getProviderChain()).toThrow(

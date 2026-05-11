@@ -1,43 +1,25 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/persona(.*)']);
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
+const isAuthPage = createRouteMatcher(['/login(.*)', '/register(.*)', '/forgot-password(.*)', '/reset-password(.*)', '/verify-email(.*)']);
 
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register') ||
-    pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password') ||
-    pathname.startsWith('/verify-email');
-  const isAdminPage = pathname.startsWith('/admin');
-  const isProtectedPage = pathname.startsWith('/dashboard') || pathname.startsWith('/persona');
-
-  const secureCookie = request.nextUrl.protocol === 'https:';
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-    secureCookie,
-  });
-  const isLoggedIn = !!token;
-
-  if (isAdminPage) {
-    if (!isLoggedIn) return NextResponse.redirect(new URL('/login', request.url));
-    if (token?.role !== 'admin') return NextResponse.redirect(new URL('/dashboard', request.url));
-    return NextResponse.next();
+export default clerkMiddleware(async (auth, req) => {
+  if (isAdminRoute(req)) {
+    const { sessionClaims } = await auth.protect();
+    if ((sessionClaims?.metadata as { role?: string })?.role !== 'admin') {
+      return Response.redirect(new URL('/dashboard', req.url));
+    }
+  } else if (isProtectedRoute(req)) {
+    await auth.protect();
+  } else if (isAuthPage(req)) {
+    const { userId } = await auth();
+    if (userId) {
+      return Response.redirect(new URL('/dashboard', req.url));
+    }
   }
-
-  if (isProtectedPage) {
-    if (!isLoggedIn) return NextResponse.redirect(new URL('/login', request.url));
-    if (token?.emailVerified === false) return NextResponse.redirect(new URL('/verify-email', request.url));
-    return NextResponse.next();
-  }
-
-  if (isLoggedIn && isAuthPage && !pathname.startsWith('/verify-email')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)', '/(api|trpc)(.*)'],
 };

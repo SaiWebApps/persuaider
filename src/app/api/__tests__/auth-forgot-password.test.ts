@@ -112,7 +112,7 @@ describe('POST /api/auth/forgot-password', () => {
   });
 
   it('uses crypto.randomBytes for token generation', async () => {
-    const crypto = require('crypto');
+    const crypto = jest.requireMock<typeof import('crypto')>('crypto');
     mockUser.findUnique.mockResolvedValue({ id: 'u1', email: 'user@test.com' });
     mockToken.create.mockResolvedValue({ id: 't1' });
 

@@ -1,4 +1,4 @@
-.PHONY: help install setup dev build test test-unit test-e2e test-e2e-visible test-e2e-pw test-health lint format db-setup db-migrate db-seed db-reset db-studio clean deploy init-env set-keys ensure-server
+.PHONY: help install setup dev build test test-unit test-e2e test-e2e-visible test-e2e-pw test-health test-auth-health lint format db-setup db-migrate db-seed db-reset db-studio clean deploy init-env set-keys ensure-server
 
 # Default target - show help
 help:
@@ -136,6 +136,16 @@ install:
 	@echo "📦 Installing dependencies..."
 	npm install
 	@echo "✅ Dependencies installed"
+
+# Set up Clerk auth integration via Vercel Marketplace
+clerk-setup:
+	@echo "🔐 Setting up Clerk via Vercel Marketplace..."
+	vercel integration accept-terms clerk --yes
+	vercel integration add clerk
+	vercel link --yes
+	@echo "Pulling env vars from Vercel..."
+	vercel env pull .env.local --yes
+	@echo "✅ Clerk configured. Run 'make test-auth-health' to verify."
 
 # Complete setup
 setup: init-env install db-setup db-seed
@@ -329,6 +339,12 @@ test-health: ensure-deps
 	@npx tsx e2e/playwright/health-check.ts
 	@echo ""
 
+# Run Clerk auth health check (verify Clerk API key is valid)
+test-auth-health: ensure-deps
+	@echo "🔐 Running Clerk auth health check..."
+	@npx tsx e2e/playwright/clerk-health.ts
+	@echo ""
+
 # Run tests in watch mode
 test-watch: ensure-deps
 	@echo "👀 Running tests in watch mode..."
@@ -358,7 +374,7 @@ format-check: ensure-deps
 	npm run format:check
 
 # Deploy to Vercel production
-deploy: build
+deploy: build test-auth-health
 	@echo "🚀 Deploying to Vercel production..."
 	vercel --prod
 	@echo "✅ Deployment complete"

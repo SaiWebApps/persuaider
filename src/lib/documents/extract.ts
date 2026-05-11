@@ -1,5 +1,4 @@
 import * as fs from 'fs/promises';
-import * as path from 'path';
 
 /**
  * Supported MIME types for document extraction.

@@ -4,7 +4,6 @@ import { prisma } from '@/lib/db/client';
 import { LLMProviderFactory } from '@/lib/llm/providers/factory';
 import { buildConversationContext } from '@/lib/llm/prompts';
 import { parseMoodResponse } from '@/lib/llm/mood';
-import { DEFAULT_MOOD } from '@/types';
 
 export async function POST(
   request: NextRequest,
