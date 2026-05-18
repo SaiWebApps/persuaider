@@ -356,6 +356,12 @@ test-coverage: ensure-deps
 	npm run test:coverage
 	@echo "✅ Coverage report generated in ./coverage"
 
+# Type-check (no emit)
+typecheck: ensure-deps
+	@echo "🔍 Running TypeScript type check..."
+	npx tsc --noEmit
+	@echo "✅ Type check complete"
+
 # Lint code
 lint: ensure-deps
 	@echo "🔍 Linting code..."
