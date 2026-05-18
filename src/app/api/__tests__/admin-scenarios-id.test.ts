@@ -6,9 +6,9 @@
  * Integration tests for /api/admin/scenarios/[id] routes (GET, PATCH, DELETE).
  */
 
-const mockAuthFn = jest.fn();
-jest.mock('@/lib/auth', () => ({
-  auth: () => mockAuthFn(),
+const mockRequireAdmin = jest.fn();
+jest.mock('@/lib/auth/admin', () => ({
+  requireAdmin: () => mockRequireAdmin(),
 }));
 
 const mockScenario = {
@@ -26,7 +26,7 @@ jest.mock('@/lib/db/client', () => ({
 }));
 
 import { GET, PATCH, DELETE } from '../admin/scenarios/[id]/route';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 function createParams(id: string) {
   return { params: Promise.resolve({ id }) };
@@ -54,21 +54,21 @@ describe('GET /api/admin/scenarios/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('GET');
     const res = await GET(req, createParams('s1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('GET');
     const res = await GET(req, createParams('s1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 404 when scenario not found', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockScenario.findUnique.mockResolvedValue(null);
     const req = createRequest('GET');
     const res = await GET(req, createParams('nonexistent'));
@@ -78,7 +78,7 @@ describe('GET /api/admin/scenarios/[id]', () => {
   });
 
   it('returns scenario with personas, members, and conversation count', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const scenarioRecord = {
       id: 's1',
       title: 'Budget Negotiation',
@@ -105,7 +105,7 @@ describe('GET /api/admin/scenarios/[id]', () => {
   });
 
   it('passes correct id to prisma', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockScenario.findUnique.mockResolvedValue({ id: 'target-id' });
 
     const req = createRequest('GET');
@@ -123,21 +123,21 @@ describe('PATCH /api/admin/scenarios/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('PATCH', { title: 'New Title' });
     const res = await PATCH(req, createParams('s1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('PATCH', { title: 'New Title' });
     const res = await PATCH(req, createParams('s1'));
     expect(res.status).toBe(403);
   });
 
   it('updates title', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const updated = { id: 's1', title: 'Updated Title' };
     mockScenario.update.mockResolvedValue(updated);
 
@@ -149,7 +149,7 @@ describe('PATCH /api/admin/scenarios/[id]', () => {
   });
 
   it('updates description', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const updated = { id: 's1', description: 'New description' };
     mockScenario.update.mockResolvedValue(updated);
 
@@ -161,7 +161,7 @@ describe('PATCH /api/admin/scenarios/[id]', () => {
   });
 
   it('updates status', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const updated = { id: 's1', status: 'published' };
     mockScenario.update.mockResolvedValue(updated);
 
@@ -173,7 +173,7 @@ describe('PATCH /api/admin/scenarios/[id]', () => {
   });
 
   it('updates multiple fields at once', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const updated = {
       id: 's1',
       title: 'New Title',
@@ -208,7 +208,7 @@ describe('PATCH /api/admin/scenarios/[id]', () => {
   });
 
   it('sends empty update when no recognized fields provided', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockScenario.update.mockResolvedValue({ id: 's1' });
 
     const req = createRequest('PATCH', { unrecognized: 'field' });
@@ -228,21 +228,21 @@ describe('DELETE /api/admin/scenarios/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('DELETE');
     const res = await DELETE(req, createParams('s1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('DELETE');
     const res = await DELETE(req, createParams('s1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 404 when scenario not found', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockScenario.findUnique.mockResolvedValue(null);
     const req = createRequest('DELETE');
     const res = await DELETE(req, createParams('nonexistent'));
@@ -252,7 +252,7 @@ describe('DELETE /api/admin/scenarios/[id]', () => {
   });
 
   it('deletes scenario and returns success', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockScenario.findUnique.mockResolvedValue({ id: 's1' });
     mockScenario.delete.mockResolvedValue({ id: 's1' });
 

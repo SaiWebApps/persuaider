@@ -268,8 +268,8 @@ test: ensure-deps init-env db-setup db-seed
 	npx playwright test --config e2e/playwright.config.ts; \
 	PW_EXIT=$$?; \
 	echo "🛑 Stopping dev server..."; \
-	kill $$SERVER_PID 2>/dev/null || true; \
-	pkill -f "next dev" 2>/dev/null || true; \
+	kill $$SERVER_PID 2>/dev/null; \
+	pkill -f "next dev" 2>/dev/null; \
 	if [ $$SELENIUM_EXIT -ne 0 ]; then echo "❌ Selenium tests failed"; exit $$SELENIUM_EXIT; fi; \
 	if [ $$PW_EXIT -ne 0 ]; then echo "❌ Playwright tests failed"; exit $$PW_EXIT; fi; \
 	echo ""; \

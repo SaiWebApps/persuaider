@@ -47,6 +47,10 @@ export async function POST(request: Request) {
 
   const { type, data } = event;
 
+  if (!data.id) {
+    return NextResponse.json({ error: 'Missing user ID in event' }, { status: 400 });
+  }
+
   if (type === 'user.created' || type === 'user.updated') {
     const email = data.email_addresses[0]?.email_address;
     if (!email) {

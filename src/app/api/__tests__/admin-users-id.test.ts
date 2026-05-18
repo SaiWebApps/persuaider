@@ -6,6 +6,11 @@
  * Integration tests for /api/admin/users/[id] routes (GET, PATCH, DELETE).
  */
 
+const mockRequireAdmin = jest.fn();
+jest.mock('@/lib/auth/admin', () => ({
+  requireAdmin: () => mockRequireAdmin(),
+}));
+
 const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuthFn(),
@@ -26,16 +31,8 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
-jest.mock('bcryptjs', () => ({
-  hash: jest.fn().mockResolvedValue('hashed-new-password'),
-}));
-
-jest.mock('generate-password', () => ({
-  generate: jest.fn().mockReturnValue('N3wP@ssw0rd!'),
-}));
-
 import { GET, PATCH, DELETE } from '../admin/users/[id]/route';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 function createParams(id: string) {
   return { params: Promise.resolve({ id }) };
@@ -63,21 +60,21 @@ describe('GET /api/admin/users/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('GET');
     const res = await GET(req, createParams('u1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('GET');
     const res = await GET(req, createParams('u1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 404 when user not found', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUser.findUnique.mockResolvedValue(null);
     const req = createRequest('GET');
     const res = await GET(req, createParams('nonexistent'));
@@ -87,7 +84,7 @@ describe('GET /api/admin/users/[id]', () => {
   });
 
   it('returns user with counts for admin', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const userRecord = {
       id: 'u1',
       email: 'user@test.com',
@@ -108,7 +105,7 @@ describe('GET /api/admin/users/[id]', () => {
   });
 
   it('passes correct id to prisma', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUser.findUnique.mockResolvedValue({ id: 'target-id' });
 
     const req = createRequest('GET');
@@ -126,21 +123,21 @@ describe('PATCH /api/admin/users/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('PATCH', { role: 'admin' });
     const res = await PATCH(req, createParams('u1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('PATCH', { role: 'admin' });
     const res = await PATCH(req, createParams('u1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 400 when no valid fields provided', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const req = createRequest('PATCH', { bogus: 'value' });
     const res = await PATCH(req, createParams('u1'));
     expect(res.status).toBe(400);
@@ -149,7 +146,7 @@ describe('PATCH /api/admin/users/[id]', () => {
   });
 
   it('updates user role', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const updated = {
       id: 'u1',
       email: 'user@test.com',
@@ -172,55 +169,20 @@ describe('PATCH /api/admin/users/[id]', () => {
   });
 
   it('ignores invalid role values', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const req = createRequest('PATCH', { role: 'superuser' });
     const res = await PATCH(req, createParams('u1'));
     // 'superuser' is not in ['user','admin'], so no valid fields
     expect(res.status).toBe(400);
   });
 
-  it('resets password and returns generated password', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
-    const updated = {
-      id: 'u1',
-      email: 'user@test.com',
-      username: 'User',
-      role: 'user',
-    };
-    mockUser.update.mockResolvedValue(updated);
-
+  it('returns 400 for resetPassword (now managed via Clerk)', async () => {
+    mockRequireAdmin.mockResolvedValue(null);
     const req = createRequest('PATCH', { resetPassword: true });
     const res = await PATCH(req, createParams('u1'));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.generatedPassword).toBe('N3wP@ssw0rd!');
-    expect(data.user.id).toBe('u1');
-  });
-
-  it('resets password AND updates role in one call', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
-    const updated = {
-      id: 'u1',
-      email: 'user@test.com',
-      username: 'User',
-      role: 'admin',
-    };
-    mockUser.update.mockResolvedValue(updated);
-
-    const req = createRequest('PATCH', { resetPassword: true, role: 'admin' });
-    const res = await PATCH(req, createParams('u1'));
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.generatedPassword).toBe('N3wP@ssw0rd!');
-    expect(data.user.role).toBe('admin');
-    expect(mockUser.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          role: 'admin',
-          passwordHash: 'hashed-new-password',
-        }),
-      })
-    );
+    expect(data.error).toMatch(/clerk/i);
   });
 });
 
@@ -231,20 +193,21 @@ describe('DELETE /api/admin/users/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('DELETE');
     const res = await DELETE(req, createParams('u1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('DELETE');
     const res = await DELETE(req, createParams('u1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 404 when user not found', async () => {
+    mockRequireAdmin.mockResolvedValue(null);
     mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
     mockUser.findUnique.mockResolvedValue(null);
     const req = createRequest('DELETE');
@@ -255,6 +218,7 @@ describe('DELETE /api/admin/users/[id]', () => {
   });
 
   it('deletes user and returns success', async () => {
+    mockRequireAdmin.mockResolvedValue(null);
     mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
     mockUser.findUnique.mockResolvedValue({ id: 'u1' });
     mockUser.delete.mockResolvedValue({ id: 'u1' });
@@ -265,5 +229,15 @@ describe('DELETE /api/admin/users/[id]', () => {
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(mockUser.delete).toHaveBeenCalledWith({ where: { id: 'u1' } });
+  });
+
+  it('prevents admin from deleting themselves', async () => {
+    mockRequireAdmin.mockResolvedValue(null);
+    mockAuthFn.mockResolvedValue({ user: { id: 'self-id', role: 'admin' } });
+    const req = createRequest('DELETE');
+    const res = await DELETE(req, createParams('self-id'));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/cannot delete/i);
   });
 });

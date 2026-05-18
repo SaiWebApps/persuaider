@@ -38,7 +38,15 @@ describe('LLMProviderFactory', () => {
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
     process.env.OPENAI_API_KEY = 'test-openai-key';
 
-    const { LLMProviderFactory } = jest.requireMock<typeof import('../providers/factory')>('../providers/factory');
+    jest.mock('@anthropic-ai/sdk', () => jest.fn().mockImplementation(() => ({})));
+    jest.mock('@google/generative-ai', () => ({
+      GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+        getGenerativeModel: jest.fn().mockReturnValue({}),
+      })),
+    }));
+    jest.mock('openai', () => jest.fn().mockImplementation(() => ({})));
+
+    const { LLMProviderFactory } = jest.requireActual<typeof import('../providers/factory')>('../providers/factory');
     LLMProviderFactory.clearCache();
     const chain = LLMProviderFactory.getProviderChain();
     const providers = chain.getProviders();
@@ -51,7 +59,15 @@ describe('LLMProviderFactory', () => {
   it('initializes with only available providers', () => {
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 
-    const { LLMProviderFactory } = jest.requireMock<typeof import('../providers/factory')>('../providers/factory');
+    jest.mock('@anthropic-ai/sdk', () => jest.fn().mockImplementation(() => ({})));
+    jest.mock('@google/generative-ai', () => ({
+      GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+        getGenerativeModel: jest.fn().mockReturnValue({}),
+      })),
+    }));
+    jest.mock('openai', () => jest.fn().mockImplementation(() => ({})));
+
+    const { LLMProviderFactory } = jest.requireActual<typeof import('../providers/factory')>('../providers/factory');
     LLMProviderFactory.clearCache();
     const chain = LLMProviderFactory.getProviderChain();
     const providers = chain.getProviders();
@@ -60,7 +76,15 @@ describe('LLMProviderFactory', () => {
   });
 
   it('throws when no API keys are set', () => {
-    const { LLMProviderFactory } = jest.requireMock<typeof import('../providers/factory')>('../providers/factory');
+    jest.mock('@anthropic-ai/sdk', () => jest.fn().mockImplementation(() => ({})));
+    jest.mock('@google/generative-ai', () => ({
+      GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
+        getGenerativeModel: jest.fn().mockReturnValue({}),
+      })),
+    }));
+    jest.mock('openai', () => jest.fn().mockImplementation(() => ({})));
+
+    const { LLMProviderFactory } = jest.requireActual<typeof import('../providers/factory')>('../providers/factory');
     LLMProviderFactory.clearCache();
 
     expect(() => LLMProviderFactory.getProviderChain()).toThrow(

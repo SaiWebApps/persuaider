@@ -6,9 +6,9 @@
  * Integration tests for /api/admin/scenarios/[id]/assign routes (POST, DELETE).
  */
 
-const mockAuthFn = jest.fn();
-jest.mock('@/lib/auth', () => ({
-  auth: () => mockAuthFn(),
+const mockRequireAdmin = jest.fn();
+jest.mock('@/lib/auth/admin', () => ({
+  requireAdmin: () => mockRequireAdmin(),
 }));
 
 const mockUserScenario = {
@@ -24,7 +24,7 @@ jest.mock('@/lib/db/client', () => ({
 }));
 
 import { POST, DELETE } from '../admin/scenarios/[id]/assign/route';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 function createParams(id: string) {
   return { params: Promise.resolve({ id }) };
@@ -52,21 +52,21 @@ describe('POST /api/admin/scenarios/[id]/assign', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('POST', { userId: 'u1' });
     const res = await POST(req, createParams('s1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('POST', { userId: 'u1' });
     const res = await POST(req, createParams('s1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 400 when userId is missing', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const req = createRequest('POST', {});
     const res = await POST(req, createParams('s1'));
     expect(res.status).toBe(400);
@@ -75,7 +75,7 @@ describe('POST /api/admin/scenarios/[id]/assign', () => {
   });
 
   it('returns 409 when user is already assigned', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUserScenario.findUnique.mockResolvedValue({
       userId: 'u1',
       scenarioId: 's1',
@@ -89,7 +89,7 @@ describe('POST /api/admin/scenarios/[id]/assign', () => {
   });
 
   it('creates assignment and returns 201', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUserScenario.findUnique.mockResolvedValue(null);
     const assignment = { userId: 'u1', scenarioId: 's1', id: 'us-1' };
     mockUserScenario.create.mockResolvedValue(assignment);
@@ -103,7 +103,7 @@ describe('POST /api/admin/scenarios/[id]/assign', () => {
   });
 
   it('uses correct compound key for duplicate check', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUserScenario.findUnique.mockResolvedValue(null);
     mockUserScenario.create.mockResolvedValue({ userId: 'u2', scenarioId: 's5' });
 
@@ -115,7 +115,7 @@ describe('POST /api/admin/scenarios/[id]/assign', () => {
   });
 
   it('passes correct data to create', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUserScenario.findUnique.mockResolvedValue(null);
     mockUserScenario.create.mockResolvedValue({ userId: 'u3', scenarioId: 's2' });
 
@@ -134,21 +134,21 @@ describe('DELETE /api/admin/scenarios/[id]/assign', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    mockAuthFn.mockResolvedValue(null);
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const req = createRequest('DELETE', { userId: 'u1' });
     const res = await DELETE(req, createParams('s1'));
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for non-admin user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const req = createRequest('DELETE', { userId: 'u1' });
     const res = await DELETE(req, createParams('s1'));
     expect(res.status).toBe(403);
   });
 
   it('returns 400 when userId is missing', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     const req = createRequest('DELETE', {});
     const res = await DELETE(req, createParams('s1'));
     expect(res.status).toBe(400);
@@ -157,7 +157,7 @@ describe('DELETE /api/admin/scenarios/[id]/assign', () => {
   });
 
   it('deletes assignment and returns success', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUserScenario.deleteMany.mockResolvedValue({ count: 1 });
 
     const req = createRequest('DELETE', { userId: 'u1' });
@@ -171,7 +171,7 @@ describe('DELETE /api/admin/scenarios/[id]/assign', () => {
   });
 
   it('succeeds even when no assignment existed (idempotent)', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'a1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockUserScenario.deleteMany.mockResolvedValue({ count: 0 });
 
     const req = createRequest('DELETE', { userId: 'u99' });

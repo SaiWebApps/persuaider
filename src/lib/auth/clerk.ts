@@ -15,23 +15,27 @@ export interface AuthSession {
 }
 
 export async function getAuthSession(): Promise<AuthSession | null> {
-  const { userId, sessionClaims } = await auth();
-  if (!userId) return null;
+  try {
+    const { userId, sessionClaims } = await auth();
+    if (!userId) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    select: { id: true, role: true },
-  });
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true, role: true },
+    });
 
-  if (!user) return null;
+    if (!user) return null;
 
-  return {
-    user: {
-      id: user.id,
-      role: (sessionClaims?.metadata as { role?: string })?.role || user.role,
-      emailVerified: true,
-    },
-  };
+    return {
+      user: {
+        id: user.id,
+        role: (sessionClaims?.metadata as { role?: string })?.role || user.role,
+        emailVerified: true,
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function signOut(): Promise<void> {

@@ -2,6 +2,11 @@
  * @jest-environment node
  */
 
+const mockRequireAdmin = jest.fn();
+jest.mock('@/lib/auth/admin', () => ({
+  requireAdmin: () => mockRequireAdmin(),
+}));
+
 const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuthFn(),
@@ -32,19 +37,26 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+jest.mock('crypto', () => ({
+  randomBytes: jest.fn().mockReturnValue({
+    toString: jest.fn().mockReturnValue('ABCD1234'),
+  }),
+}));
+
 import { GET, POST } from '../admin/scenarios/route';
+import { NextResponse } from 'next/server';
 
 describe('GET /api/admin/scenarios', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('returns 403 for non-admin', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
     const response = await GET();
     expect(response.status).toBe(403);
   });
 
   it('returns scenarios for admin', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'admin' } });
+    mockRequireAdmin.mockResolvedValue(null);
     mockScenario.findMany.mockResolvedValue([
       { id: 's1', title: 'Test', _count: { personas: 2, members: 1, conversations: 5 } },
     ]);
@@ -59,6 +71,7 @@ describe('POST /api/admin/scenarios', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('creates scenario with personas', async () => {
+    mockRequireAdmin.mockResolvedValue(null);
     mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'admin' } });
     mockScenario.create.mockResolvedValue({ id: 's-new', title: 'New Scenario' });
     mockPersona.create.mockResolvedValue({ id: 'p-new' });
@@ -87,6 +100,7 @@ describe('POST /api/admin/scenarios', () => {
   });
 
   it('returns 400 when title is missing', async () => {
+    mockRequireAdmin.mockResolvedValue(null);
     mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'admin' } });
     const request = new Request('http://localhost/api/admin/scenarios', {
       method: 'POST',
