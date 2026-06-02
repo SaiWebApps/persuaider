@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/db/client';
 import { ScenarioTableClient } from '@/components/admin/ScenarioTable';
 
+// Reads from the database on every request; never statically prerender at build time.
+export const dynamic = 'force-dynamic';
+
 export default async function AdminScenariosPage() {
   const scenarios = await prisma.scenario.findMany({
     include: {

@@ -39,17 +39,25 @@ async function main() {
 
   console.log('Created demo user:', demoUser.email);
 
-  // Create an admin user
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@persuaider.local' },
-    update: { role: 'admin', emailVerified: new Date() },
-    create: {
-      email: 'admin@persuaider.local',
-      username: 'Admin',
-      role: 'admin',
-      emailVerified: new Date(),
-    },
-  });
+  // Create/reconcile the admin user (email matches the Clerk e2e admin test user).
+  // A legacy row may already hold the unique 'Admin' username under the old
+  // admin@persuaider.local email; update it in place to avoid a username collision.
+  const existingAdmin = await prisma.user.findFirst({ where: { username: 'Admin' } });
+  const adminUser = existingAdmin
+    ? await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: { email: 'admin@persuaider.dev', role: 'admin', emailVerified: new Date() },
+      })
+    : await prisma.user.upsert({
+        where: { email: 'admin@persuaider.dev' },
+        update: { role: 'admin', emailVerified: new Date() },
+        create: {
+          email: 'admin@persuaider.dev',
+          username: 'Admin',
+          role: 'admin',
+          emailVerified: new Date(),
+        },
+      });
 
   console.log('Created admin user:', adminUser.email);
 

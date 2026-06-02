@@ -92,6 +92,7 @@ model Persona {
   roleType        String
   initialGreeting String?
   characteristics String?        // JSON stored as text
+  avatarUrl       String?        // custom uploaded avatar URL; null falls back to a generated avatar
   strategyMemory  String?        // JSON stored as text; placeholder for future cross-conversation learning
   displayOrder    Int            @default(0)
   createdAt       DateTime       @default(now())

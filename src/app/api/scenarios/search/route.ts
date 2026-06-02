@@ -19,8 +19,13 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q')?.trim();
+  const tag = searchParams.get('tag')?.trim();
 
-  if (!query || query.length < 2) {
+  if (!query && !tag) {
+    return NextResponse.json({ error: 'Search query or tag required' }, { status: 400 });
+  }
+
+  if (query && query.length < 2) {
     return NextResponse.json({ error: 'Search query must be at least 2 characters' }, { status: 400 });
   }
 
@@ -30,21 +35,34 @@ export async function GET(request: NextRequest) {
   });
   const joinedSet = new Set(joinedIds.map(j => j.scenarioId));
 
+  const whereClause: Record<string, unknown> = {
+    status: 'published',
+    visibility: 'public',
+  };
+
+  // Tag filter: exact match within JSON array string
+  if (tag) {
+    whereClause.tags = { contains: `\"${tag}\"` };
+  }
+
+  // Text search filter
+  if (query) {
+    whereClause.OR = [
+      { title: { contains: query } },
+      { description: { contains: query } },
+      { userRole: { contains: query } },
+      { aiRole: { contains: query } },
+      ...(tag ? [] : [{ tags: { contains: query } }]),
+    ];
+  }
+
   const scenarios = await prisma.scenario.findMany({
-    where: {
-      status: 'published',
-      OR: [
-        { title: { contains: query } },
-        { description: { contains: query } },
-        { userRole: { contains: query } },
-        { aiRole: { contains: query } },
-        { tags: { contains: query } },
-      ],
-    },
+    where: whereClause,
     include: {
       _count: { select: { personas: true, members: true } },
+      createdBy: { select: { username: true } },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ inspirationCount: 'desc' }, { createdAt: 'desc' }],
     take: 20,
   });
 
@@ -55,7 +73,10 @@ export async function GET(request: NextRequest) {
     userRole: s.userRole,
     aiRole: s.aiRole,
     joinCode: s.joinCode,
+    tags: JSON.parse(s.tags || '[]'),
+    inspirationCount: s.inspirationCount,
     isRestricted: !!s.accessCode,
+    creatorUsername: s.createdBy?.username || null,
     personaCount: s._count.personas,
     memberCount: s._count.members,
     alreadyJoined: joinedSet.has(s.id),

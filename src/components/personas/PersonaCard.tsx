@@ -1,4 +1,6 @@
 'use client';
+import { generateAvatarUrl } from '@/lib/avatars/dicebear';
+import Image from 'next/image';
 
 interface PersonaCardProps {
   persona: {
@@ -6,6 +8,7 @@ interface PersonaCardProps {
     name: string;
     description: string;
     roleType: string;
+    avatarUrl?: string;
   };
   status: 'available' | 'in_progress' | 'completed';
   onClick: () => void;
@@ -45,12 +48,24 @@ export function PersonaCard({ persona, status, onClick }: PersonaCardProps) {
     >
       {/* Avatar */}
       <div className="h-48 bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="text-white text-6xl font-bold">
+        <div className="w-full h-full flex items-center justify-center" data-testid="persona-avatar">
+          
+            <Image
+              src={persona.avatarUrl || generateAvatarUrl(persona.name)}
+              alt={persona.name}
+              className="w-full h-full object-cover"
+              width={192}
+              height={192}
+              unoptimized
+              data-testid="persona-avatar-image"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+            />
+
+
+          <div className={`text-white text-6xl font-bold ${persona.avatarUrl ? 'hidden' : ''}`}>
             {persona.name.charAt(0)}
           </div>
         </div>
-
         {/* Status Badge */}
         <div className="absolute top-3 right-3">
           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config.color} bg-white/90 dark:bg-gray-900/90`}>

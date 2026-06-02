@@ -44,7 +44,13 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
     // @ts-expect-error pdf-parse has no type declarations
     const pdfParse = (await import('pdf-parse')).default;
     const result = await pdfParse(buffer);
-    return result.text;
+    // pdf-parse can return empty or garbage (e.g. a stray glyph) for minimal or
+    // non-standard PDFs without throwing; fall back to basic extraction when it
+    // yields no usable (alphanumeric) text.
+    if (result?.text && /[a-zA-Z0-9]/.test(result.text)) {
+      return result.text;
+    }
+    return extractPdfTextFallback(buffer);
   } catch {
     // pdf-parse not installed or failed — use basic fallback
     return extractPdfTextFallback(buffer);

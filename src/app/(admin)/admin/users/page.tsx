@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/db/client';
 import { UserTableClient } from '@/components/admin/UserTable';
 
+// Reads from the database on every request; never statically prerender at build time.
+export const dynamic = 'force-dynamic';
+
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
     select: {

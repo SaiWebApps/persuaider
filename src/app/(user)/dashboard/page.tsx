@@ -6,6 +6,9 @@ import { DashboardClient } from './DashboardClient';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SignOutButton } from '@clerk/nextjs';
 
+// Reads per-request user data from the database; opt out of static prerendering.
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const session = await auth();
 

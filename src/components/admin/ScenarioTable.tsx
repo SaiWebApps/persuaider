@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { EvaluationEditor } from '@/components/admin/EvaluationEditor';
+import { WinConditionEditor } from '@/components/admin/WinConditionEditor';
+import { TagsEditor } from '@/components/admin/TagsEditor';
+import { SourceDocumentUpload } from '@/components/admin/SourceDocumentUpload';
+import { PersonaEditPanel } from '@/components/admin/PersonaEditPanel';
+import type { EvaluationCriteria, WinCondition } from '@/types';
 
 interface PersonaSummary {
   id: string;
@@ -16,6 +22,14 @@ interface MemberInfo {
   user: { id: string; email: string; username: string };
 }
 
+interface SourceFileInfo {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 interface ScenarioRow {
   id: string;
   title: string;
@@ -24,9 +38,15 @@ interface ScenarioRow {
   aiRole: string;
   joinCode: string;
   status: string;
+  visibility?: string;
+  tags?: string;
+  contextNotes?: string | null;
+  evaluationCriteria?: string;
+  winCondition?: string;
   createdAt: Date;
   personas: PersonaSummary[];
   members: MemberInfo[];
+  sourceFiles?: SourceFileInfo[];
   _count: { conversations: number };
 }
 
@@ -42,6 +62,16 @@ interface NewPersona {
   roleType: string;
   initialGreeting: string;
 }
+
+const defaultEvalCriteria: EvaluationCriteria = {
+  frameworks: [],
+  scoringInstructions: '',
+};
+
+const defaultWinCondition: WinCondition = {
+  type: 'manual',
+  maxMessages: 30,
+};
 
 export function ScenarioTableClient({
   initialScenarios,
@@ -63,8 +93,30 @@ export function ScenarioTableClient({
   const [newPersonas, setNewPersonas] = useState<NewPersona[]>([
     { name: '', description: '', roleType: '', initialGreeting: '' },
   ]);
+  const [evalCriteria, setEvalCriteria] = useState<EvaluationCriteria>(defaultEvalCriteria);
+  const [winCondition, setWinCondition] = useState<WinCondition>(defaultWinCondition);
+  const [contextNotes, setContextNotes] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<'public' | 'unlisted'>('unlisted');
+  // Tracks which existing persona (by id) has its edit panel open in the expanded row.
+  const [editingPersonaId, setEditingPersonaId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Edit scenario state
+  const [editScenarioId, setEditScenarioId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editUserRole, setEditUserRole] = useState('');
+  const [editAiRole, setEditAiRole] = useState('');
+  const [editEvalCriteria, setEditEvalCriteria] = useState<EvaluationCriteria>(defaultEvalCriteria);
+  const [editWinCondition, setEditWinCondition] = useState<WinCondition>(defaultWinCondition);
+  const [editContextNotes, setEditContextNotes] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editVisibility, setEditVisibility] = useState<'public' | 'unlisted'>('unlisted');
+  const [editSourceFiles, setEditSourceFiles] = useState<SourceFileInfo[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Assign users state
   const [assignScenarioId, setAssignScenarioId] = useState<string | null>(null);
@@ -78,6 +130,11 @@ export function ScenarioTableClient({
     setUserRole('');
     setAiRole('');
     setNewPersonas([{ name: '', description: '', roleType: '', initialGreeting: '' }]);
+    setEvalCriteria(defaultEvalCriteria);
+    setWinCondition(defaultWinCondition);
+    setContextNotes('');
+    setTags([]);
+    setVisibility('unlisted');
     setCreateError(null);
   };
 
@@ -93,6 +150,11 @@ export function ScenarioTableClient({
           description,
           userRole,
           aiRole,
+          evaluationCriteria: evalCriteria,
+          winCondition,
+          contextNotes: contextNotes || null,
+          tags,
+          visibility,
           personas: newPersonas.filter(p => p.name.trim()),
         }),
       });
@@ -111,6 +173,123 @@ export function ScenarioTableClient({
     }
   };
 
+  const openEdit = async (scenario: ScenarioRow) => {
+    setEditScenarioId(scenario.id);
+    setEditTitle(scenario.title);
+    setEditDescription(scenario.description);
+    setEditUserRole(scenario.userRole);
+    setEditAiRole(scenario.aiRole);
+    setEditContextNotes(scenario.contextNotes || '');
+    setEditVisibility((scenario.visibility as 'public' | 'unlisted') || 'public');
+    setEditError(null);
+
+    try {
+      const evalStr = scenario.evaluationCriteria || '{}';
+      const evalObj = typeof evalStr === 'string' ? JSON.parse(evalStr) : evalStr;
+      setEditEvalCriteria(evalObj.frameworks ? evalObj : defaultEvalCriteria);
+    } catch {
+      setEditEvalCriteria(defaultEvalCriteria);
+    }
+
+    try {
+      const winStr = scenario.winCondition || '{"type":"manual"}';
+      const winObj = typeof winStr === 'string' ? JSON.parse(winStr) : winStr;
+      setEditWinCondition(winObj);
+    } catch {
+      setEditWinCondition(defaultWinCondition);
+    }
+
+    try {
+      const tagsStr = scenario.tags || '[]';
+      const tagsArr = typeof tagsStr === 'string' ? JSON.parse(tagsStr) : tagsStr;
+      setEditTags(Array.isArray(tagsArr) ? tagsArr : []);
+    } catch {
+      setEditTags([]);
+    }
+
+    // Load source files
+    try {
+      const res = await fetch(`/api/admin/scenarios/${scenario.id}/source-files`);
+      if (res.ok) {
+        const data = await res.json();
+        setEditSourceFiles(data.files || []);
+      }
+    } catch {
+      setEditSourceFiles([]);
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editScenarioId) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/admin/scenarios/${editScenarioId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          description: editDescription,
+          userRole: editUserRole,
+          aiRole: editAiRole,
+          evaluationCriteria: editEvalCriteria,
+          winCondition: editWinCondition,
+          contextNotes: editContextNotes || null,
+          tags: editTags,
+          visibility: editVisibility,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setEditError(data.error || 'Failed to save');
+        return;
+      }
+      setEditScenarioId(null);
+      router.refresh();
+    } catch {
+      setEditError('Failed to save');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleEditUpload = async (file: File) => {
+    if (!editScenarioId) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`/api/admin/scenarios/${editScenarioId}/source-files`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Upload failed');
+    }
+    const data = await res.json();
+    setEditSourceFiles([...editSourceFiles, data.file]);
+  };
+
+  const handleEditDeleteFile = async (fileId: string) => {
+    if (!editScenarioId) return;
+    await fetch(`/api/admin/scenarios/${editScenarioId}/source-files`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileId }),
+    });
+    setEditSourceFiles(editSourceFiles.filter(f => f.id !== fileId));
+  };
+
+  const handleStatusChange = async (scenarioId: string, newStatus: string) => {
+    const res = await fetch(`/api/admin/scenarios/${scenarioId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) {
+      router.refresh();
+    }
+  };
+
   const openAssign = (scenario: ScenarioRow) => {
     setAssignScenarioId(scenario.id);
     setAssignedUserIds(new Set(scenario.members.map(m => m.user.id)));
@@ -124,7 +303,6 @@ export function ScenarioTableClient({
 
     const currentIds = new Set(scenario.members.map(m => m.user.id));
 
-    // Add new assignments
     for (const uid of assignedUserIds) {
       if (!currentIds.has(uid)) {
         await fetch(`/api/admin/scenarios/${assignScenarioId}/assign`, {
@@ -135,7 +313,6 @@ export function ScenarioTableClient({
       }
     }
 
-    // Remove unassigned
     for (const uid of currentIds) {
       if (!assignedUserIds.has(uid)) {
         await fetch(`/api/admin/scenarios/${assignScenarioId}/assign`, {
@@ -172,10 +349,23 @@ export function ScenarioTableClient({
     setNewPersonas(newPersonas.filter((_, i) => i !== index));
   };
 
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      draft: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+      published: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+      archived: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+    };
+    return styles[status as keyof typeof styles] || styles.draft;
+  };
+
+  const totalSteps = 5;
+
   return (
     <>
       <div className="flex justify-end mb-4">
-        <Button onClick={() => setShowCreate(true)}>Create Scenario</Button>
+        <Button onClick={() => setShowCreate(true)} data-testid="create-scenario-btn">
+          Create Scenario
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -184,10 +374,16 @@ export function ScenarioTableClient({
             <div
               className="px-6 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
               onClick={() => setExpanded(expanded === s.id ? null : s.id)}
+              data-testid={`scenario-row-${s.id}`}
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{s.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{s.title}</h3>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadge(s.status)}`}>
+                      {s.status}
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{s.description.substring(0, 120)}...</p>
                   <div className="flex gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
                     <span>{s.personas.length} personas</span>
@@ -197,6 +393,9 @@ export function ScenarioTableClient({
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(s); }} data-testid={`edit-btn-${s.id}`}>
+                    Edit
+                  </Button>
                   <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openAssign(s); }}>
                     Assign Users
                   </Button>
@@ -219,12 +418,46 @@ export function ScenarioTableClient({
                     <p className="text-sm text-gray-900 dark:text-gray-100">{s.aiRole}</p>
                   </div>
                 </div>
+
+                {/* Status actions */}
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Lifecycle</p>
+                  <div className="flex gap-2">
+                    {s.status === 'draft' && (
+                      <Button size="sm" onClick={() => handleStatusChange(s.id, 'published')} data-testid={`publish-btn-${s.id}`}>
+                        Publish
+                      </Button>
+                    )}
+                    {s.status === 'published' && (
+                      <Button variant="secondary" size="sm" onClick={() => handleStatusChange(s.id, 'archived')} data-testid={`archive-btn-${s.id}`}>
+                        Archive
+                      </Button>
+                    )}
+                    {s.status === 'archived' && (
+                      <span className="text-xs text-gray-500 italic">Archived (no further transitions)</span>
+                    )}
+                  </div>
+                </div>
+
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">Personas</p>
                 <div className="space-y-2">
                   {s.personas.map(p => (
-                    <div key={p.id} className="flex items-center gap-2 text-sm">
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{p.name}</span>
-                      <span className="text-gray-500 dark:text-gray-400">({p.roleType})</span>
+                    <div key={p.id} className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{p.name}</span>
+                        <span className="text-gray-500 dark:text-gray-400">({p.roleType})</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingPersonaId(editingPersonaId === p.id ? null : p.id)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
+                          data-testid={`edit-persona-${p.id}`}
+                        >
+                          {editingPersonaId === p.id ? 'Close' : 'Edit'}
+                        </button>
+                      </div>
+                      {editingPersonaId === p.id && (
+                        <PersonaEditPanel personaId={p.id} personaName={p.name} />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -247,7 +480,11 @@ export function ScenarioTableClient({
       </div>
 
       {/* Create Scenario Modal */}
-      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); resetCreateForm(); }} title={`Create Scenario — Step ${step} of 3`}>
+      <Modal
+        isOpen={showCreate}
+        onClose={() => { setShowCreate(false); resetCreateForm(); }}
+        title={`Create Scenario - Step ${step} of ${totalSteps}`}
+      >
         <div>
           {step === 1 && (
             <div className="space-y-4">
@@ -266,7 +503,7 @@ export function ScenarioTableClient({
 
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Add personas for the AI to roleplay. Each persona should have a distinct personality.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Add personas for the AI to roleplay.</p>
               {newPersonas.map((p, i) => (
                 <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between items-center">
@@ -279,7 +516,7 @@ export function ScenarioTableClient({
                   <Input label="Role Type" name="personaRoleType" value={p.roleType} onChange={e => updatePersona(i, 'roleType', e.target.value)} placeholder="e.g. Skeptical buyer" />
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                    <textarea name="personaDescription" value={p.description} onChange={e => updatePersona(i, 'description', e.target.value)} rows={2} placeholder="Describe personality and concerns..." className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" />
+                    <textarea name="personaDescription" value={p.description} onChange={e => updatePersona(i, 'description', e.target.value)} rows={2} placeholder="Describe personality..." className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" />
                   </div>
                 </div>
               ))}
@@ -292,6 +529,50 @@ export function ScenarioTableClient({
           )}
 
           {step === 3 && (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              <EvaluationEditor value={evalCriteria} onChange={setEvalCriteria} />
+              <WinConditionEditor value={winCondition} onChange={setWinCondition} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Context Notes</label>
+                <textarea
+                  value={contextNotes}
+                  onChange={e => setContextNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Additional constraints or context for this scenario..."
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  data-testid="create-context-notes"
+                />
+              </div>
+              <div className="flex justify-between">
+                <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
+                <Button onClick={() => setStep(4)}>Next</Button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <TagsEditor value={tags} onChange={setTags} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Visibility</label>
+                <select
+                  value={visibility}
+                  onChange={e => setVisibility(e.target.value as 'public' | 'unlisted')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  data-testid="create-visibility"
+                >
+                  <option value="unlisted">Unlisted (join code only)</option>
+                  <option value="public">Public (discoverable)</option>
+                </select>
+              </div>
+              <div className="flex justify-between">
+                <Button variant="secondary" onClick={() => setStep(3)}>Back</Button>
+                <Button onClick={() => setStep(5)}>Next</Button>
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
             <div className="space-y-4">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Review your scenario:</p>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-2">
@@ -299,16 +580,84 @@ export function ScenarioTableClient({
                 <p className="text-sm"><strong>Trainee:</strong> {userRole}</p>
                 <p className="text-sm"><strong>AI:</strong> {aiRole}</p>
                 <p className="text-sm"><strong>Personas:</strong> {newPersonas.filter(p => p.name.trim()).map(p => p.name).join(', ')}</p>
+                <p className="text-sm"><strong>Frameworks:</strong> {evalCriteria.frameworks.length} defined</p>
+                <p className="text-sm"><strong>Win:</strong> {winCondition.type === 'manual' ? 'Manual' : `Score >= ${winCondition.threshold}`}</p>
+                <p className="text-sm"><strong>Tags:</strong> {tags.length > 0 ? tags.join(', ') : 'None'}</p>
+                <p className="text-sm"><strong>Visibility:</strong> {visibility}</p>
               </div>
               {createError && <p className="text-sm text-red-600">{createError}</p>}
               <div className="flex justify-between">
-                <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
-                <Button onClick={handleCreate} disabled={creating}>
+                <Button variant="secondary" onClick={() => setStep(4)}>Back</Button>
+                <Button onClick={handleCreate} disabled={creating} data-testid="create-submit">
                   {creating ? 'Creating...' : 'Create Scenario'}
                 </Button>
               </div>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Edit Scenario Modal */}
+      <Modal
+        isOpen={!!editScenarioId}
+        onClose={() => setEditScenarioId(null)}
+        title="Edit Scenario"
+      >
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+          <Input label="Title" name="editTitle" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Trainee Role" name="editUserRole" value={editUserRole} onChange={e => setEditUserRole(e.target.value)} />
+            <Input label="AI Role" name="editAiRole" value={editAiRole} onChange={e => setEditAiRole(e.target.value)} />
+          </div>
+
+          <EvaluationEditor value={editEvalCriteria} onChange={setEditEvalCriteria} />
+          <WinConditionEditor value={editWinCondition} onChange={setEditWinCondition} />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Context Notes</label>
+            <textarea
+              value={editContextNotes}
+              onChange={e => setEditContextNotes(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              data-testid="edit-context-notes"
+            />
+          </div>
+
+          <TagsEditor value={editTags} onChange={setEditTags} />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Visibility</label>
+            <select
+              value={editVisibility}
+              onChange={e => setEditVisibility(e.target.value as 'public' | 'unlisted')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+              data-testid="edit-visibility"
+            >
+              <option value="unlisted">Unlisted</option>
+              <option value="public">Public</option>
+            </select>
+          </div>
+
+          <SourceDocumentUpload
+            scenarioId={editScenarioId || undefined}
+            files={editSourceFiles}
+            onUpload={handleEditUpload}
+            onDelete={handleEditDeleteFile}
+          />
+
+          {editError && <p className="text-sm text-red-600">{editError}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setEditScenarioId(null)}>Cancel</Button>
+            <Button onClick={handleEditSave} disabled={editSaving} data-testid="edit-save">
+              {editSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       </Modal>
 
@@ -349,3 +698,4 @@ export function ScenarioTableClient({
     </>
   );
 }
+

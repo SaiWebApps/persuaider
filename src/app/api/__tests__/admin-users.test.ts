@@ -22,6 +22,11 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+const mockCreateUser = jest.fn();
+jest.mock('@clerk/nextjs/server', () => ({
+  clerkClient: async () => ({ users: { createUser: mockCreateUser } }),
+}));
+
 import { GET, POST } from '../admin/users/route';
 import { NextResponse } from 'next/server';
 
@@ -66,9 +71,10 @@ describe('POST /api/admin/users', () => {
     expect(response.status).toBe(403);
   });
 
-  it('creates user', async () => {
+  it('creates a Clerk user and returns a generated password', async () => {
     mockRequireAdmin.mockResolvedValue(null);
     mockUser.findFirst.mockResolvedValue(null);
+    mockCreateUser.mockResolvedValue({ id: 'clerk_new' });
     mockUser.create.mockResolvedValue({
       id: 'u2', email: 'new@test.com', username: 'New User', role: 'user', createdAt: new Date(),
     });
@@ -82,6 +88,11 @@ describe('POST /api/admin/users', () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.user.email).toBe('new@test.com');
+    expect(mockCreateUser).toHaveBeenCalledWith(
+      expect.objectContaining({ emailAddress: ['new@test.com'], skipPasswordChecks: true })
+    );
+    expect(typeof data.generatedPassword).toBe('string');
+    expect(data.generatedPassword.length).toBeGreaterThan(6);
   });
 
   it('returns 409 for duplicate email', async () => {

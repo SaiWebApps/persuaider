@@ -429,19 +429,20 @@ describe('Public Scenarios - Red Team', () => {
     mockUser.findUnique.mockResolvedValue({ emailVerified: new Date() });
   });
 
-  it('does not return scenarios user already joined', async () => {
+  it('marks scenarios user already joined with alreadyJoined flag', async () => {
     mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
     mockUserScenario.findMany.mockResolvedValue([{ scenarioId: 's1' }]);
     mockScenario.findMany.mockResolvedValue([
-      { id: 's1', title: 'Joined', description: 'D', userRole: 'U', aiRole: 'A', joinCode: 'X', _count: { personas: 1, members: 1 } },
-      { id: 's2', title: 'NotJoined', description: 'D', userRole: 'U', aiRole: 'A', joinCode: 'Y', _count: { personas: 1, members: 1 } },
+      { id: 's1', title: 'Joined', description: 'D', userRole: 'U', aiRole: 'A', joinCode: 'X', accessCode: null, inspirationCount: 0, tags: '[]', createdBy: { username: null }, _count: { personas: 1, members: 1 } },
+      { id: 's2', title: 'NotJoined', description: 'D', userRole: 'U', aiRole: 'A', joinCode: 'Y', accessCode: null, inspirationCount: 0, tags: '[]', createdBy: { username: null }, _count: { personas: 1, members: 1 } },
     ]);
 
     const res = await publicScenarios();
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.scenarios).toHaveLength(1);
-    expect(data.scenarios[0].id).toBe('s2');
+    expect(data.scenarios).toHaveLength(2);
+    expect(data.scenarios.find((s: { id: string }) => s.id === 's1').alreadyJoined).toBe(true);
+    expect(data.scenarios.find((s: { id: string }) => s.id === 's2').alreadyJoined).toBe(false);
   });
 
   it('returns 401 when not authenticated', async () => {

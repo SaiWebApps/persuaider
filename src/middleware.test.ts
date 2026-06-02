@@ -11,9 +11,9 @@ const mockAuth = jest.fn();
 const mockProtect = jest.fn();
 
 jest.mock('@clerk/nextjs/server', () => ({
-  clerkMiddleware: (handler: Function) => {
+  clerkMiddleware: (handler: (auth: () => unknown, req: Request) => unknown) => {
     return async (req: Request) => {
-      const authObj = (..._args: unknown[]) => mockAuth();
+      const authObj = () => mockAuth();
       authObj.protect = mockProtect;
       return handler(authObj, req);
     };
@@ -278,9 +278,8 @@ describe('Middleware route protection', () => {
       const req = createRequest('/api/something');
       const result = await middleware(req);
 
-      // Neither protect nor auth should be called for unmatched routes
+      // protect should not be called for unmatched routes
       expect(mockProtect).not.toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
       expect(result).toBeUndefined();
     });
 

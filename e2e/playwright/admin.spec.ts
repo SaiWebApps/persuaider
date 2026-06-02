@@ -14,7 +14,7 @@ test('admin can access admin panel and see user table', async ({ page }) => {
   await expect(page.locator('h1:has-text("Users"), h2:has-text("Users")').first()).toBeVisible();
   await expect(page.locator('table')).toBeVisible();
   await expect(page.locator('td:has-text("demo@persuaider.com")')).toBeVisible();
-  await expect(page.locator('td:has-text("admin@persuaider.local")')).toBeVisible();
+  await expect(page.locator('td:has-text("admin@persuaider.dev")')).toBeVisible();
 });
 
 test('admin can create a user account', async ({ page }) => {
@@ -47,18 +47,27 @@ test('admin can create a scenario with personas', async ({ page }) => {
 
   await page.locator('main button:has-text("Create Scenario"), [data-testid="create-scenario-btn"]').first().click();
 
+  // Step 1: basics
   await page.locator('input[name="title"]').fill(scenarioName);
   await page.locator('textarea[name="description"]').fill('Created by Playwright test');
   await page.locator('input[name="userRole"]').fill('Tester');
   await page.locator('input[name="aiRole"]').fill('Subject');
   await page.locator('[role="dialog"] button:has-text("Next")').click();
 
+  // Step 2: personas
   await page.locator('input[name="personaName"]').fill('E2E Persona');
   await page.locator('input[name="personaRoleType"]').fill('Skeptic');
   await page.locator('[role="dialog"] button:has-text("Next")').click();
 
+  // Step 3: evaluation framework + win condition (defaults are valid)
+  await page.locator('[role="dialog"] button:has-text("Next")').click();
+
+  // Step 4: tags + visibility (optional)
+  await page.locator('[role="dialog"] button:has-text("Next")').click();
+
+  // Step 5: review + create
   await expect(page.locator(`[role="dialog"]:has-text("${scenarioName}")`)).toBeVisible();
-  await page.locator('[role="dialog"] button:has-text("Create Scenario")').click();
+  await page.locator('[data-testid="create-submit"]').click();
 
   await expect(page.locator(`h3:has-text("${scenarioName}")`)).toBeVisible({ timeout: 10000 });
 });

@@ -18,14 +18,13 @@ export async function GET() {
     where: { visibility: 'public', status: 'published' },
     include: {
       _count: { select: { personas: true, members: true } },
+      createdBy: { select: { username: true } },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ inspirationCount: 'desc' }, { createdAt: 'desc' }],
   });
 
-  const available = scenarios.filter(s => !joinedSet.has(s.id));
-
   return NextResponse.json({
-    scenarios: available.map(s => ({
+    scenarios: scenarios.map(s => ({
       id: s.id,
       title: s.title,
       description: s.description,
@@ -34,6 +33,11 @@ export async function GET() {
       joinCode: s.joinCode,
       personaCount: s._count.personas,
       memberCount: s._count.members,
+      tags: JSON.parse(s.tags || '[]'),
+      inspirationCount: s.inspirationCount,
+      isRestricted: !!s.accessCode,
+      creatorUsername: s.createdBy?.username || null,
+      alreadyJoined: joinedSet.has(s.id),
     })),
   });
 }

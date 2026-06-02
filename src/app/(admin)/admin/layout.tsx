@@ -29,6 +29,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               >
                 Scenarios
               </Link>
+              <Link
+                href="/admin/analytics"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                Analytics
+              </Link>
+              <Link
+                href="/admin/conversations"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                Conversations
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-3">

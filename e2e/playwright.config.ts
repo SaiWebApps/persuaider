@@ -1,4 +1,8 @@
 import { defineConfig } from '@playwright/test';
+import * as dotenv from 'dotenv';
+
+// .env.local is the source of truth — override any stale shell env vars
+dotenv.config({ path: '.env.local', override: true });
 
 export default defineConfig({
   globalSetup: './playwright/global-setup.ts',

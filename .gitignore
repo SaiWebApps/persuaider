@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
@@ -23,6 +25,9 @@
 # misc
 .DS_Store
 *.pem
+
+# runtime user uploads (not source)
+/public/uploads/
 
 # debug
 npm-debug.log*

@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
-test('login page loads', async ({ page }) => {
+test('login page loads Clerk sign-in widget', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.locator('h2:has-text("Persuaider"), h1:has-text("Persuaider")').first()).toBeVisible();
-  await expect(page.locator('input[name="email"]')).toBeVisible();
-  await expect(page.locator('input[name="password"]')).toBeVisible();
+  // Clerk's SignIn component renders inside a div with class cl-signIn-root or similar
+  // Wait for Clerk to mount its UI
+  await expect(
+    page.locator('.cl-signIn-root, .cl-rootBox, [data-clerk-component="SignIn"]').first()
+  ).toBeVisible({ timeout: 15000 });
 });
 
 test('demo user can log in and see dashboard', async ({ page }) => {

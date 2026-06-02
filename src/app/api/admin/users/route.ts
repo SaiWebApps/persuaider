@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
+import { clerkClient } from '@clerk/nextjs/server';
 import { requireAdmin } from '@/lib/auth/admin';
 import { prisma } from '@/lib/db/client';
 
@@ -59,20 +61,38 @@ export async function POST(request: Request) {
     );
   }
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      username,
-      role: 'user',
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      role: true,
-      createdAt: true,
-    },
-  });
+  const generatedPassword = randomBytes(18).toString('base64url');
 
-  return NextResponse.json({ user });
+  try {
+    // Create the Clerk identity so the user can actually sign in, then mirror to the DB.
+    const client = await clerkClient();
+    const clerkUser = await client.users.createUser({
+      emailAddress: [email],
+      password: generatedPassword,
+      skipPasswordChecks: true,
+      publicMetadata: { role: 'user' },
+    });
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        role: 'user',
+        clerkId: clerkUser.id,
+        emailVerified: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ user, generatedPassword });
+  } catch (error) {
+    console.error('Failed to create user:', error);
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
+  }
 }

@@ -120,7 +120,10 @@ describe('GET /api/admin/scenarios/[id]', () => {
 // PATCH /api/admin/scenarios/[id]
 // ---------------------------------------------------------------------------
 describe('PATCH /api/admin/scenarios/[id]', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockScenario.findUnique.mockResolvedValue({ id: 's1', status: 'draft', evaluationCriteria: '{}', winCondition: '{}', tags: '[]' });
+  });
 
   it('returns 401 when not authenticated', async () => {
     mockRequireAdmin.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -174,6 +177,7 @@ describe('PATCH /api/admin/scenarios/[id]', () => {
 
   it('updates multiple fields at once', async () => {
     mockRequireAdmin.mockResolvedValue(null);
+    mockScenario.findUnique.mockResolvedValue({ id: 's1', status: 'published', evaluationCriteria: '{}', winCondition: '{}', tags: '[]' });
     const updated = {
       id: 's1',
       title: 'New Title',
