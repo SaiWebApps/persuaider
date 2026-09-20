@@ -4,20 +4,7 @@ import type { LLMResponse, LLMOptions } from './types';
 import { LLMError, LLMErrorType } from './errors';
 import type { ChainOptions } from './providers/chain';
 
-interface Persona {
-  name: string;
-  description: string;
-  roleType: string;
-  characteristics?: string | null;
-}
-
-interface Scenario {
-  title: string;
-  description: string;
-  userRole: string;
-  aiRole: string;
-  evaluationCriteria: string;
-}
+import type { PersonaPromptInput as Persona, ScenarioPromptInput as Scenario } from './prompts';
 
 interface Message {
   role: string;

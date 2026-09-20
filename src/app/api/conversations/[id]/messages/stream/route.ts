@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/client';
 import { LLMProviderFactory } from '@/lib/llm/providers/factory';
 import { buildConversationContext } from '@/lib/llm/prompts';
 import { parseMoodResponse } from '@/lib/llm/mood';
+import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
 
 export async function POST(
   request: NextRequest,
@@ -30,12 +31,8 @@ export async function POST(
   const conversation = await prisma.conversation.findUnique({
     where: { id },
     include: {
-      persona: {
-        select: { name: true, description: true, roleType: true, characteristics: true },
-      },
-      scenario: {
-        select: { title: true, description: true, userRole: true, aiRole: true, evaluationCriteria: true },
-      },
+      persona: { select: personaPromptSelect },
+      scenario: { select: scenarioPromptSelect },
       messages: { orderBy: { createdAt: 'asc' as const }, take: 50 },
     },
   });

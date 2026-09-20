@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db/client';
 import { generatePersonaResponse } from '@/lib/llm';
 import { parseMoodResponse } from '@/lib/llm/mood';
 import { DEFAULT_MOOD } from '@/types';
+import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
 
 // POST /api/conversations/[id]/messages - Add message to conversation
 export async function POST(
@@ -54,23 +55,8 @@ export async function POST(
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       include: {
-        persona: {
-          select: {
-            name: true,
-            description: true,
-            roleType: true,
-            characteristics: true,
-          },
-        },
-        scenario: {
-          select: {
-            title: true,
-            description: true,
-            userRole: true,
-            aiRole: true,
-            evaluationCriteria: true,
-          },
-        },
+        persona: { select: personaPromptSelect },
+        scenario: { select: scenarioPromptSelect },
         messages: {
           orderBy: { createdAt: 'asc' },
           take: 50,

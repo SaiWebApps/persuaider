@@ -102,9 +102,19 @@ async function main() {
     maxMessages: 30,
   });
 
+  const salaryIssues = JSON.stringify([
+        {
+          name: 'Annual salary',
+          unit: 'USD',
+          learnerWants: 'higher',
+          learner: { target: 130000, reservation: 115000, weight: 100 },
+          counterpart: { target: 108000, reservation: 120000, weight: 100 },
+        },
+      ]);
+
   const scenario = await prisma.scenario.upsert({
     where: { joinCode: 'EXAMPLE1' },
-    update: {},
+    update: { issues: salaryIssues },
     create: {
       title: 'Salary Negotiation',
       description: 'You are negotiating a raise with your manager after a strong performance year. Your goal is to secure a meaningful salary increase while maintaining a positive working relationship.',
@@ -114,6 +124,7 @@ async function main() {
       winCondition,
       visibility: 'public',
       joinCode: 'EXAMPLE1',
+      issues: salaryIssues,
       tags: JSON.stringify(['negotiation', 'salary', 'workplace', 'example']),
       status: 'published',
       createdById: systemUser.id,
@@ -130,7 +141,7 @@ async function main() {
       roleType: 'Supportive but cautious manager',
       initialGreeting: "Thanks for setting up this meeting. I saw you wanted to discuss your compensation — I'm happy to listen. What's on your mind?",
       characteristics: JSON.stringify({
-        openness: 4,
+        openness: 0.4,
         concerns: ['budget constraints', 'team equity', 'setting precedents'],
         personality: ['data-driven', 'fair-minded', 'pragmatic', 'approachable'],
         roleBehavior: 'Listens carefully, asks for evidence, raises budget concerns but is ultimately willing to negotiate if given strong reasons.',
@@ -143,7 +154,7 @@ async function main() {
       roleType: 'Hard-nosed executive',
       initialGreeting: "I have 15 minutes. You mentioned wanting to talk about your pay. Go ahead — but I'll be direct with you, we've already allocated this year's raises.",
       characteristics: JSON.stringify({
-        openness: 2,
+        openness: 0.2,
         concerns: ['bottom line', 'company policy', 'performance metrics'],
         personality: ['direct', 'skeptical', 'time-pressured', 'results-oriented'],
         roleBehavior: 'Challenges every point, references company policy, but respects well-prepared arguments. Will concede ground if the employee demonstrates clear, measurable value.',
@@ -156,7 +167,7 @@ async function main() {
       roleType: 'Empathetic but uncertain manager',
       initialGreeting: "Hey, come on in. I got your message about wanting to chat. I want you to know I really value your work here — let's talk about what you're thinking.",
       characteristics: JSON.stringify({
-        openness: 5,
+        openness: 0.5,
         concerns: ['getting approval from above', 'fairness to the team', 'their own credibility'],
         personality: ['empathetic', 'collaborative', 'slightly nervous', 'people-pleaser'],
         roleBehavior: 'Agrees easily but then raises obstacles about needing approval. The employee needs to help build a case that Pat can take to leadership.',
@@ -253,7 +264,7 @@ async function main() {
       roleType: 'Security-conscious skeptic',
       initialGreeting: "I got your meeting invite about AI tools. Before we start — have these been through our security review? I need to know about data handling, access controls, and compliance certifications.",
       characteristics: JSON.stringify({
-        openness: 2,
+        openness: 0.2,
         concerns: ['privacy and data breaches', 'regulatory compliance', 'unauthorized data access', 'vendor security posture'],
         personality: ['methodical', 'cautious', 'detail-oriented', 'policy-focused'],
         roleBehavior: 'Demands specific security certifications and compliance guarantees. Will not budge without concrete evidence of data protection measures.',
@@ -266,7 +277,7 @@ async function main() {
       roleType: 'Change-resistant veteran',
       initialGreeting: "AI tools? Look, I've been doing this job for 25 years without any of that. Last time management pushed a new 'revolutionary' system on us, it was that disaster of a CRM three years ago. What makes this any different?",
       characteristics: JSON.stringify({
-        openness: 1,
+        openness: 0.1,
         concerns: ['job replacement', 'steep learning curve', 'unreliable technology', 'loss of expertise value'],
         personality: ['resistant', 'nostalgic', 'territorial', 'proud of experience'],
         roleBehavior: 'Dismisses AI as a fad, brings up past tech failures, worries about being replaced. Very hard to convince but will soften if shown AI augments rather than replaces his expertise.',
@@ -279,7 +290,7 @@ async function main() {
       roleType: 'Standards-driven perfectionist',
       initialGreeting: "I'm willing to listen, but I have serious concerns about quality. I've seen those AI chatbots hallucinate confidently about things that are completely wrong. How do we maintain our professional standards with tools like that?",
       characteristics: JSON.stringify({
-        openness: 3,
+        openness: 0.3,
         concerns: ['accuracy and hallucinations', 'professional liability', 'quality degradation', 'client trust'],
         personality: ['perfectionist', 'thorough', 'standards-driven', 'risk-averse'],
         roleBehavior: 'Demands evidence of accuracy rates, asks about error correction workflows, and needs assurance that AI output will be reviewed by humans.',
@@ -292,7 +303,7 @@ async function main() {
       roleType: 'Budget-conscious analyst',
       initialGreeting: "Sure, let's talk numbers. What's the per-seat licensing cost? What's the implementation cost? And more importantly, what's the projected ROI and by when? Because my budget is already stretched thin.",
       characteristics: JSON.stringify({
-        openness: 3,
+        openness: 0.3,
         concerns: ['ROI uncertainty', 'hidden costs', 'subscription fatigue', 'budget constraints'],
         personality: ['analytical', 'numbers-focused', 'skeptical of hype', 'pragmatic'],
         roleBehavior: 'Requires concrete cost-benefit analysis with real numbers. Will respond to data-driven arguments but dismisses vague promises of efficiency gains.',
@@ -305,7 +316,7 @@ async function main() {
       roleType: 'Values-driven creative',
       initialGreeting: "I appreciate you thinking of the team, but I'm worried this is going to turn our work into something generic and soulless. Our clients chose us for the human touch. What happens to that?",
       characteristics: JSON.stringify({
-        openness: 2,
+        openness: 0.2,
         concerns: ['losing human touch', 'creativity devaluation', 'authenticity erosion', 'client relationship damage'],
         personality: ['passionate', 'artistic', 'values-driven', 'tradition-respecting'],
         roleBehavior: 'Argues that AI output lacks soul and nuance. Needs to be shown that AI handles the mundane so she can focus MORE on creative work, not less.',
@@ -318,7 +329,7 @@ async function main() {
       roleType: 'Anxious but willing learner',
       initialGreeting: "Oh, AI tools? I... I've heard about those. I'm not very tech-savvy, honestly. I tried ChatGPT once and got overwhelmed by all the options. Is this going to be really complicated? I don't want to break anything.",
       characteristics: JSON.stringify({
-        openness: 4,
+        openness: 0.4,
         concerns: ['complexity', 'breaking things', 'looking foolish in front of colleagues', 'information overload'],
         personality: ['anxious', 'willing but scared', 'self-deprecating', 'cautious'],
         roleBehavior: 'Wants step-by-step guidance and reassurance. Worries about messing up. The easiest persona to convince if you are patient and empathetic.',

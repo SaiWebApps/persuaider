@@ -8,6 +8,7 @@ import {
   DEFAULT_WIN_CONDITION,
   parseCharacteristicsInput,
   parseEvaluationCriteriaInput,
+  parseIssuesInput,
   parseTagsInput,
   parseWinConditionInput,
   serialize,
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, description, userRole, aiRole, personas, accessCode, evaluationCriteria, winCondition, tags } = body;
+    const { title, description, userRole, aiRole, personas, accessCode, evaluationCriteria, winCondition, tags, issues } = body;
 
     if (!title || !description || !userRole || !aiRole) {
       return NextResponse.json(
@@ -44,11 +45,13 @@ export async function POST(request: Request) {
     let criteriaStr = serialize(DEFAULT_EVALUATION_CRITERIA);
     let winStr = serialize(DEFAULT_WIN_CONDITION);
     let tagsStr = '[]';
+    let issuesStr = '[]';
     const personaRows: Array<{ name: string; description: string; roleType: string; initialGreeting: string | null; characteristics: string | null }> = [];
     try {
       if (evaluationCriteria !== undefined) criteriaStr = serialize(parseEvaluationCriteriaInput(evaluationCriteria));
       if (winCondition !== undefined) winStr = serialize(parseWinConditionInput(winCondition));
       if (tags !== undefined) tagsStr = serialize(parseTagsInput(tags));
+      if (issues !== undefined) issuesStr = serialize(parseIssuesInput(issues));
       if (Array.isArray(personas)) {
         for (const p of personas) {
           if (!p?.name) continue;
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
         evaluationCriteria: criteriaStr,
         winCondition: winStr,
         tags: tagsStr,
+        issues: issuesStr,
         visibility: 'public',
         joinCode,
         accessCode: accessCode?.trim() || null,

@@ -8,6 +8,7 @@ import {
   DEFAULT_WIN_CONDITION,
   parseContextNotesInput,
   parseEvaluationCriteriaInput,
+  parseIssuesInput,
   parseTagsInput,
   parseVisibilityInput,
   parseWinConditionInput,
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     tags,
     visibility,
     personas,
+    issues,
   } = body;
 
   if (!title || !description || !userRole || !aiRole) {
@@ -59,7 +61,9 @@ export async function POST(request: Request) {
   let contextNotesVal: string | null = null;
   let tagsStr = '[]';
   let visibilityVal: 'public' | 'unlisted' = 'unlisted';
+  let issuesStr = '[]';
   try {
+    if (issues !== undefined) issuesStr = serialize(parseIssuesInput(issues));
     if (evaluationCriteria !== undefined) evalCriteriaStr = serialize(parseEvaluationCriteriaInput(evaluationCriteria));
     if (winCondition !== undefined) winConditionStr = serialize(parseWinConditionInput(winCondition));
     if (contextNotes !== undefined) contextNotesVal = parseContextNotesInput(contextNotes);
@@ -82,6 +86,7 @@ export async function POST(request: Request) {
       winCondition: winConditionStr,
       contextNotes: contextNotesVal,
       tags: tagsStr,
+      issues: issuesStr,
       visibility: visibilityVal,
       joinCode,
       status: 'draft',
