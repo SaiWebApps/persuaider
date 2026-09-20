@@ -33,6 +33,7 @@ uses the word. Terms marked **(open)** are proposed and awaiting a decision; see
 - **Reattempt** (settled, no UI) — Starting a fresh Conversation with the same Persona after a completed one; resumes an in-progress one if it exists.
 - **Fork** (settled) — Copying a public Scenario into your own library.
 - **Join code** (settled) — A short code that adds a Learner to a Scenario.
+- **Share link** (settled) — The public page for a Scenario, reached by its Join code, that shows what the Scenario is and which side a Learner plays, and lets a visitor join. It never shows a brief or an Issue number.
 
 ## Open
 

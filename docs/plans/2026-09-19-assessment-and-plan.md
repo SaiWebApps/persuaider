@@ -399,3 +399,20 @@ Slice 12 (goal reviewer's recommendation, accepted): the ten-strangers gate need
 landing page and a shareable scenario link `/s/[joinCode]` (title, sides, a sign-up button
 that auto-joins), so a creator can send a scenario to a friend. Slice 13: add/remove Issues
 and edit personas in the editor.
+
+## 14. Slice 12 shipped (2026-09-20)
+
+Public landing page at `/` (signed-in visitors go to the dashboard) and a Share link
+`/s/[joinCode]`: title, description, who you play and against whom, the counterparts by name,
+one sentence saying what will happen (AI on the other side with a hidden walk-away, feedback
+at the end, about ten minutes), and a link preview title for chat apps. No brief, no number
+and no access code appears before joining. A stranger signs up from the link and lands on the
+dashboard already a member; a signed-in visitor joins with one click; a member is sent to the
+dashboard instead. Every member gets a Share button (copies the link) on the dashboard and
+the creator one more in the editor. Sign-in and sign-up honour a same-origin `redirect_url`
+only, checked by parsing (`src/lib/auth/redirect.ts`). The join route has a real-Postgres
+test. Noticed, not done: a server-side `redirect()` from the share page is dropped by the
+client router during Clerk's post-sign-up navigation (page stuck rendering), so the join
+happens client-side with a hard navigation; the join route's verified-email check is dead
+code since provisioning only creates verified users; a scenario with an access code still
+needs the code typed on the share page; member count shows only from three.

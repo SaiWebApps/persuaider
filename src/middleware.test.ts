@@ -35,8 +35,9 @@ function createRequest(pathname: string): Request {
   const url = `http://localhost:3000${pathname}`;
   const req = new Request(url, { method: 'GET' });
   // Add nextUrl for the createRouteMatcher mock
+  const parsed = new URL(url);
   Object.defineProperty(req, 'nextUrl', {
-    value: { pathname },
+    value: { pathname: parsed.pathname, searchParams: parsed.searchParams },
     writable: false,
   });
   return req;
@@ -148,6 +149,16 @@ describe('Middleware route protection', () => {
       expect(result).toBeInstanceOf(Response);
       expect(result!.status).toBe(302);
       expect(new URL(result!.headers.get('location')!).pathname).toBe('/dashboard');
+    });
+
+    it('honours a same-origin redirect_url when already logged in, and ignores an off-site one', async () => {
+      mockAuth.mockResolvedValue({ userId: 'user_123' });
+
+      const same = await middleware(createRequest('/register?redirect_url=%2Fs%2FEXAMPLE1%3Fjoin%3D1'));
+      expect(new URL(same!.headers.get('location')!).pathname + new URL(same!.headers.get('location')!).search).toBe('/s/EXAMPLE1?join=1');
+
+      const offsite = await middleware(createRequest('/login?redirect_url=https%3A%2F%2Fevil.example%2F'));
+      expect(new URL(offsite!.headers.get('location')!).pathname).toBe('/dashboard');
     });
 
     it('passes through /login when user is not logged in', async () => {

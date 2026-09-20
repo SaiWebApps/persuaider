@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { CopyShareLink } from '@/components/scenarios/CopyShareLink';
 import { useEffect, useState } from 'react';
 import { PersonaGrid, type PersonaWithStatus } from '@/components/personas/PersonaGrid';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,7 @@ interface ScenarioWithPersonas {
   aiRole: string;
   learnerRoleName?: string | null;
   canEdit?: boolean;
+  joinCode?: string;
   personas: PersonaWithStatus[];
 }
 
@@ -283,11 +285,14 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-start justify-between gap-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{scenario.title}</h3>
-                {scenario.canEdit && (
-                  <a href={`/scenario/${scenario.id}/edit`} className="text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline" data-testid={`edit-scenario-${scenario.id}`}>
-                    Edit
-                  </a>
-                )}
+                <span className="flex flex-wrap gap-3">
+                  {scenario.joinCode && <CopyShareLink joinCode={scenario.joinCode} testId={`share-scenario-${scenario.id}`} />}
+                  {scenario.canEdit && (
+                    <a href={`/scenario/${scenario.id}/edit`} className="text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline" data-testid={`edit-scenario-${scenario.id}`}>
+                      Edit
+                    </a>
+                  )}
+                </span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{scenario.description}</p>
               <div className="flex gap-4 mt-2">
