@@ -53,6 +53,9 @@ export async function POST(request: Request) {
       if (winCondition !== undefined) winStr = serialize(parseWinConditionInput(winCondition));
       if (tags !== undefined) tagsStr = serialize(parseTagsInput(tags));
       if (issues !== undefined) issuesStr = serialize(parseIssuesInput(issues));
+      if (issues !== undefined && Array.isArray(issues) && issues.length > 0 && roleRows.length > 0 && roleRows.length !== 2) {
+        throw new ValidationError('issues need exactly two sides (roles)', 'roles');
+      }
       if (Array.isArray(roles)) {
         for (const r of roles) {
           if (!r?.name || typeof r.name !== 'string') continue;
@@ -62,6 +65,9 @@ export async function POST(request: Request) {
           roleRows.push({ name: r.name.trim(), description: r.description || '' });
         }
         if (roleRows.length > 6) throw new ValidationError('roles must have at most 6 items', 'roles');
+        if (new Set(roleRows.map((r) => r.name.toLowerCase())).size !== roleRows.length) {
+          throw new ValidationError('roles must have distinct names', 'roles');
+        }
       }
       if (learnerRoleName !== undefined && learnerRoleName !== null && !roleRows.some((r) => r.name === learnerRoleName)) {
         throw new ValidationError('learnerRoleName must match one of the roles', 'learnerRoleName');
@@ -71,6 +77,9 @@ export async function POST(request: Request) {
           if (!p?.name) continue;
           if (p.roleName && !roleRows.some((r) => r.name === p.roleName)) {
             throw new ValidationError(`personas: role "${p.roleName}" is not one of the roles`, 'personas');
+          }
+          if (p.roleName && learnerRoleName && p.roleName === learnerRoleName) {
+            throw new ValidationError(`personas: "${p.name}" cannot play the learner's side (${learnerRoleName})`, 'personas');
           }
           personaRows.push({
             name: p.name,
@@ -99,7 +108,8 @@ export async function POST(request: Request) {
         winCondition: winStr,
         tags: tagsStr,
         issues: issuesStr,
-        visibility: 'public',
+        // A learner's own scenario is theirs: reachable by join code, not listed on Explore.
+        visibility: 'unlisted',
         joinCode,
         accessCode: accessCode?.trim() || null,
         status: 'published',

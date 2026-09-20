@@ -432,18 +432,26 @@ function parsePersonas(raw: unknown): GeneratedPersona[] {
 function parseLearnerRoleName(raw: unknown, roles: GeneratedRole[], personas: GeneratedPersona[]): string | null {
   if (roles.length === 0) return null;
   const names = roles.map((r) => r.name);
-  if (typeof raw === 'string' && names.includes(raw.trim())) return raw.trim();
   const claimed = new Set(personas.map((p) => p.roleName).filter(Boolean));
-  return names.find((n) => !claimed.has(n)) ?? names[0];
+  const named = typeof raw === 'string' ? raw.trim() : '';
+  // The named side wins only if no persona plays it; the trainee cannot share a side with a persona.
+  if (names.includes(named) && !claimed.has(named)) return named;
+  return names.find((n) => !claimed.has(n)) ?? (names.includes(named) ? named : names[0]);
 }
 
 /** Issues are validated with the same rules as a saved scenario; anything invalid is dropped. */
 function parseIssues(raw: unknown): GeneratedIssue[] {
   if (!Array.isArray(raw)) return [];
   const out: GeneratedIssue[] = [];
+  const seen = new Set<string>();
   for (const item of raw) {
     const parsed = issueWithDirectionSchema.safeParse(item);
-    if (parsed.success) out.push(parsed.data);
+    if (!parsed.success) continue;
+    const key = parsed.data.name.trim().toLowerCase();
+    if (seen.has(key)) continue; // same rule as a saved scenario: no duplicate names
+    seen.add(key);
+    out.push(parsed.data);
+    if (out.length === 10) break;
   }
   return out;
 }

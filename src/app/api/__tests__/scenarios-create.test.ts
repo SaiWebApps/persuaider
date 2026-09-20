@@ -98,6 +98,13 @@ describe('POST /api/scenarios - sides', () => {
     expect(mockPersona.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ roleId: 'r-seller' }) }));
   });
 
+  it('rejects a persona placed on the learner side and duplicate role names', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
+    expect((await post({ ...body, personas: [{ name: 'Sam', roleName: 'Buyer' }] })).status).toBe(400);
+    expect((await post({ ...body, roles: [{ name: 'Buyer' }, { name: 'buyer' }] })).status).toBe(400);
+    expect(mockScenario.create).not.toHaveBeenCalled();
+  });
+
   it('rejects a learner side or persona side that is not one of the roles', async () => {
     mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
     expect((await post({ ...body, learnerRoleName: 'Referee' })).status).toBe(400);

@@ -31,7 +31,7 @@ test('generate a scenario with sides and numbers, save it, play it', async ({ pa
   await title.fill(`E2E ${generatedTitle}`.slice(0, 200));
 
   await page.locator('[data-testid="save-button"]').click();
-  const section = page.locator(`section:has-text("E2E ${generatedTitle.slice(0, 40)}")`).first();
+  const section = page.locator('section').filter({ hasText: `E2E ${generatedTitle.slice(0, 40)}` }).first();
   await expect(section).toBeVisible({ timeout: 20000 });
   await expect(section.locator('[data-testid="you-play"]')).toContainText('You play:');
 

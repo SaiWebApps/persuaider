@@ -427,6 +427,13 @@ describe('parseGenerationResponse: sides and numbers', () => {
     expect(parse(JSON.stringify(noLearner))!.learnerRoleName).toBe('Buyer');
   });
 
+  it('drops duplicate issue names (case-insensitive) and never places the trainee on a persona\'s side', () => {
+    const dup = { ...base, issues: [...base.issues, { ...base.issues[0], name: 'price' }] };
+    expect(parse(JSON.stringify(dup))!.issues).toHaveLength(1);
+    const shared = { ...base, learnerRole: 'Seller' }; // the persona plays Seller
+    expect(parse(JSON.stringify(shared))!.learnerRoleName).toBe('Buyer');
+  });
+
   it('has no learner side and no issues when the reply omits them', () => {
     const out = parse(JSON.stringify({ title: 'T', personas: [] }))!;
     expect(out.learnerRoleName).toBeNull();

@@ -176,7 +176,7 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
     }
   };
 
-  const handleGeneratedSave = async (generated: GeneratedScenario) => {
+  const handleGeneratedSave = async (generated: GeneratedScenario): Promise<string | null> => {
     setGenerateError('');
     const res = await fetch('/api/scenarios', {
       method: 'POST',
@@ -203,11 +203,11 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setGenerateError(data.error || 'Failed to save the generated scenario');
-      return;
+      return data.error || 'Failed to save the generated scenario';
     }
     setShowGenerateModal(false);
     router.refresh();
+    return null;
   };
 
   const allPersonas = scenarios.flatMap((s) => s.personas);
