@@ -9,7 +9,14 @@ import { SignOutButton } from '@clerk/nextjs';
 // Reads per-request user data from the database; opt out of static prerendering.
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+const NOTICES: Record<string, string> = {
+  'join-required': 'Join a scenario before practicing with its personas. Use a join code below or pick one from Explore.',
+  'persona-missing': 'That persona no longer exists.',
+};
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+  const { notice } = await searchParams;
+  const noticeText = notice ? NOTICES[notice] : undefined;
   const session = await auth();
 
   if (!session) {
@@ -135,6 +142,16 @@ export default async function DashboardPage() {
               )}
             </div>
           </div>
+
+          {noticeText && (
+            <div
+              role="status"
+              data-testid="dashboard-notice"
+              className="mb-6 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              {noticeText}
+            </div>
+          )}
 
           <DashboardClient scenarios={scenarios} />
         </div>

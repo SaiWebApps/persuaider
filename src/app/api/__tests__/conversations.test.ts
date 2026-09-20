@@ -42,7 +42,16 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+
+// The start-or-resume rules live in @/lib/conversation/start and are tested there.
+// Routes are tested for authorization and for mapping the module's outcomes to HTTP.
+const mockStart = jest.fn();
+jest.mock('@/lib/conversation/start', () => ({
+  startOrResumeConversation: (...args: unknown[]) => mockStart(...args),
+}));
+
 import { GET, POST } from '../conversations/route';
+import { AuthorizationError, NotFoundError } from '@/types';
 
 function createRequest(body?: Record<string, unknown>): NextRequest {
   return new NextRequest('http://localhost:3000/api/conversations', {
@@ -92,130 +101,50 @@ describe('GET /api/conversations', () => {
 });
 
 describe('POST /api/conversations', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
-  });
+  beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
     mockAuthFn.mockResolvedValue(null);
-    const request = createRequest({ personaId: 'p1', scenarioId: 's1' });
-    const response = await POST(request);
+    const response = await POST(createRequest({ personaId: 'p1', scenarioId: 's1' }));
     expect(response.status).toBe(401);
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when personaId is missing', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    const request = createRequest({ scenarioId: 's1' });
-    const response = await POST(request);
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toContain('required');
+  it('returns 400 when personaId or scenarioId is missing', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    expect((await POST(createRequest({ scenarioId: 's1' }))).status).toBe(400);
+    expect((await POST(createRequest({ personaId: 'p1' }))).status).toBe(400);
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when scenarioId is missing', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    const request = createRequest({ personaId: 'p1' });
-    const response = await POST(request);
-    expect(response.status).toBe(400);
+  it('passes the session user, role, persona and scenario to the module', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    mockStart.mockResolvedValue({ conversation: { id: 'c1', messages: [] }, created: true });
+    const response = await POST(createRequest({ personaId: 'p1', scenarioId: 's1' }));
+    expect(response.status).toBe(200);
+    expect(mockStart).toHaveBeenCalledWith({ userId: 'user-1', role: 'user', personaId: 'p1', scenarioId: 's1' });
+    expect((await response.json()).conversation.id).toBe('c1');
   });
 
-  it('returns 404 when persona not found', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockPersona.findUnique.mockResolvedValue(null);
-    const request = createRequest({ personaId: 'p1', scenarioId: 's1' });
-    const response = await POST(request);
+  it('maps NotFoundError to 404', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    mockStart.mockRejectedValue(new NotFoundError('Persona', 'p1'));
+    const response = await POST(createRequest({ personaId: 'p1', scenarioId: 's1' }));
     expect(response.status).toBe(404);
   });
 
-  it('returns 404 when persona does not belong to scenario', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockPersona.findUnique.mockResolvedValue({ id: 'p1', scenarioId: 'other-scenario' });
-    const request = createRequest({ personaId: 'p1', scenarioId: 's1' });
-    const response = await POST(request);
-    expect(response.status).toBe(404);
+  it('maps AuthorizationError to 403 for a learner who never joined', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'stranger', role: 'user' } });
+    mockStart.mockRejectedValue(new AuthorizationError('Join this scenario before practicing with its personas'));
+    const response = await POST(createRequest({ personaId: 'p1', scenarioId: 's1' }));
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toContain('Join this scenario');
   });
 
-  it('returns existing in-progress conversation if one exists', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      scenarioId: 's1',
-      initialGreeting: 'Hello',
-    });
-    const existingConv = { id: 'c-existing', status: 'in_progress' };
-    mockConversation.findFirst.mockResolvedValue(existingConv);
-    const fullConv = { ...existingConv, persona: { id: 'p1' }, messages: [] };
-    mockConversation.findUnique.mockResolvedValue(fullConv);
-
-    const request = createRequest({ personaId: 'p1', scenarioId: 's1' });
-    const response = await POST(request);
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.conversation.id).toBe('c-existing');
-    expect(mockConversation.create).not.toHaveBeenCalled();
-  });
-
-  it('creates new conversation with greeting message', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      scenarioId: 's1',
-      name: 'Alex',
-      initialGreeting: 'Welcome to the negotiation.',
-    });
-    mockConversation.findFirst.mockResolvedValue(null);
-    const newConv = {
-      id: 'c-new',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'in_progress',
-      persona: { id: 'p1', name: 'Alex' },
-      messages: [],
-    };
-    mockConversation.create.mockResolvedValue(newConv);
-    const greetingMsg = {
-      id: 'm1',
-      conversationId: 'c-new',
-      role: 'assistant',
-      content: 'Welcome to the negotiation.',
-    };
-    mockMessage.create.mockResolvedValue(greetingMsg);
-
-    const request = createRequest({ personaId: 'p1', scenarioId: 's1' });
-    const response = await POST(request);
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.conversation.messages).toEqual([greetingMsg]);
-  });
-
-  it('uses default greeting when persona has no initialGreeting', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      scenarioId: 's1',
-      name: 'Alex',
-      initialGreeting: null,
-    });
-    mockConversation.findFirst.mockResolvedValue(null);
-    mockConversation.create.mockResolvedValue({
-      id: 'c-new',
-      persona: { id: 'p1' },
-      messages: [],
-    });
-    mockMessage.create.mockResolvedValue({ id: 'm1', content: "Hello, I'm Alex. Let's discuss." });
-
-    const request = createRequest({ personaId: 'p1', scenarioId: 's1' });
-    await POST(request);
-
-    expect(mockMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          content: "Hello, I'm Alex. Let's discuss.",
-          role: 'assistant',
-        }),
-      })
-    );
+  it('returns 500 on unexpected failure', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    mockStart.mockRejectedValue(new Error('db down'));
+    const response = await POST(createRequest({ personaId: 'p1', scenarioId: 's1' }));
+    expect(response.status).toBe(500);
   });
 });

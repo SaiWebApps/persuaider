@@ -1,123 +1,53 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { startOrResumeConversation } from '@/lib/conversation/start';
+import { AuthorizationError, NotFoundError } from '@/types';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+// POST /api/conversations/[id]/reattempt — start a fresh attempt at the same persona
 export async function POST(_request: Request, context: RouteContext) {
   try {
     const session = await auth();
-
     if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { emailVerified: true },
-    });
-    if (!currentUser || !currentUser.emailVerified) {
-      return NextResponse.json(
-        { error: 'Email not verified' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await context.params;
 
-    const conversation = await prisma.conversation.findUnique({
+    const previous = await prisma.conversation.findUnique({
       where: { id },
-      select: {
-        id: true,
-        userId: true,
-        personaId: true,
-        scenarioId: true,
-        status: true,
-      },
+      select: { id: true, userId: true, personaId: true, scenarioId: true, status: true },
     });
-
-    if (!conversation) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 }
-      );
+    if (!previous) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+    if (previous.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (previous.status !== 'completed') {
+      return NextResponse.json({ error: 'Conversation is not completed' }, { status: 400 });
     }
 
-    if (conversation.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
-
-    if (conversation.status !== 'completed') {
-      return NextResponse.json(
-        { error: 'Conversation is not completed' },
-        { status: 400 }
-      );
-    }
-
-    const persona = await prisma.persona.findUnique({
-      where: { id: conversation.personaId },
-      select: { id: true, name: true, initialGreeting: true },
+    const { conversation, created } = await startOrResumeConversation({
+      userId: session.user.id,
+      role: session.user.role,
+      personaId: previous.personaId,
+      scenarioId: previous.scenarioId,
     });
 
-    if (!persona) {
-      return NextResponse.json(
-        { error: 'Persona not found' },
-        { status: 404 }
-      );
-    }
-
-    const existingInProgress = await prisma.conversation.findFirst({
-      where: {
-        userId: session.user.id,
-        personaId: conversation.personaId,
-        scenarioId: conversation.scenarioId,
-        status: 'in_progress',
-      },
-      select: { id: true },
-    });
-
-    if (existingInProgress) {
-      return NextResponse.json(
-        { conversationId: existingInProgress.id },
-        { status: 200 }
-      );
-    }
-
-    const newConversation = await prisma.conversation.create({
-      data: {
-        userId: session.user.id,
-        personaId: conversation.personaId,
-        scenarioId: conversation.scenarioId,
-        status: 'in_progress',
-      },
-    });
-
-    const greeting = persona.initialGreeting || `Hello, I'm ${persona.name}. Let's discuss.`;
-    await prisma.message.create({
-      data: {
-        conversationId: newConversation.id,
-        role: 'assistant',
-        content: greeting,
-      },
-    });
-
-    return NextResponse.json(
-      { conversationId: newConversation.id },
-      { status: 201 }
-    );
+    return NextResponse.json({ conversationId: conversation.id }, { status: created ? 201 : 200 });
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Error creating reattempt:', error);
-    return NextResponse.json(
-      { error: 'Failed to create reattempt' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create reattempt' }, { status: 500 });
   }
 }
