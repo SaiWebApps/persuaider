@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { readWinningArguments } from '@/lib/codec/summary';
 
 // GET /api/export/pdf - Generate HTML report of completed conversations
 export async function GET(request: NextRequest) {
@@ -81,9 +82,7 @@ function generateHTMLReport(username: string, conversations: Array<{
     conversationsHTML = '<p>No completed conversations yet.</p>';
   } else {
     conversationsHTML = conversations.map(conv => {
-      const winningArgs = conv.summary?.winningArguments
-        ? JSON.parse(conv.summary.winningArguments)
-        : [];
+      const winningArgs = readWinningArguments(conv.summary?.winningArguments);
 
       return `
         <div style="margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">

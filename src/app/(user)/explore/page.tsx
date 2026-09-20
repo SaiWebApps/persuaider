@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/db/client';
+import { readTags } from '@/lib/codec/scenario';
 import { ExploreClient } from './ExploreClient';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SignOutButton } from '@clerk/nextjs';
@@ -43,7 +44,7 @@ export default async function ExplorePage() {
     userRole: s.userRole,
     aiRole: s.aiRole,
     joinCode: s.joinCode,
-    tags: JSON.parse(s.tags || '[]') as string[],
+    tags: readTags(s.tags),
     inspirationCount: s.inspirationCount,
     personaCount: s._count.personas,
     memberCount: s._count.members,

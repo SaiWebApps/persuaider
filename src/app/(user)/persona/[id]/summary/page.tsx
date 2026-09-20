@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/client';
 import Link from 'next/link';
-import type { WinningArgument, LLMFeedback } from '@/types';
+import { readFrameworkScores, readLLMFeedback, readWinningArguments } from '@/lib/codec/summary';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 interface SummaryPageProps {
@@ -49,17 +49,9 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
     redirect('/dashboard');
   }
 
-  const winningArguments: WinningArgument[] = conversation.summary.winningArguments
-    ? JSON.parse(conversation.summary.winningArguments)
-    : [];
-
-  const llmFeedback: LLMFeedback | null = conversation.summary.llmFeedback
-    ? JSON.parse(conversation.summary.llmFeedback)
-    : null;
-
-  const frameworkScores: Record<string, number> | null = conversation.summary.frameworkScores
-    ? JSON.parse(conversation.summary.frameworkScores)
-    : null;
+  const winningArguments = readWinningArguments(conversation.summary.winningArguments);
+  const llmFeedback = readLLMFeedback(conversation.summary.llmFeedback);
+  const frameworkScores = readFrameworkScores(conversation.summary.frameworkScores);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">

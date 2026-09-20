@@ -379,7 +379,8 @@ describe('buildEvaluationPrompt - Edge Cases', () => {
       mockScenario
     );
     // Should not throw and should include fallback
-    expect(prompt).toContain('General negotiation effectiveness');
+    expect(prompt).toContain('Preparation');
+    expect(prompt).toContain('Deal-making');
   });
 
   it('handles evaluationCriteria with empty frameworks array', () => {
@@ -390,7 +391,8 @@ describe('buildEvaluationPrompt - Edge Cases', () => {
       mockPersona,
       mockScenario
     );
-    expect(prompt).toContain('General negotiation effectiveness');
+    expect(prompt).toContain('Preparation');
+    expect(prompt).toContain('Deal-making');
   });
 
   it('builds correct transcript format', () => {
