@@ -152,6 +152,7 @@ model Summary {
   winningArguments  String       // JSON stored as text
   llmFeedback       String?      // JSON: { whatWentWell, whatToImprove, specificSuggestions }
   frameworkScores   String?      // JSON: per-framework breakdown from LLM
+  deal              String?      // JSON: DealOutcome computed in code from the extracted deal state and the scenario's Issues
   generatedAt       DateTime     @default(now())
 
   conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

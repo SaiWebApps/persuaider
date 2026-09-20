@@ -1,6 +1,7 @@
 import { LLMProviderFactory } from './providers/factory';
 import type { LLMFeedback, WinningArgument } from '@/types';
 import { readEvaluationCriteria } from '@/lib/codec/scenario';
+import type { DealOutcome } from '@/lib/scoring/deal';
 
 interface EvaluationMessage {
   role: string;
@@ -31,11 +32,27 @@ export interface EvaluationResult {
 
 const MAX_EVAL_MESSAGES = 30;
 
+function describeDeal(deal: DealOutcome | undefined): string {
+  if (!deal || deal.issues.length === 0) return '';
+  const lines = deal.issues.map((i) => {
+    const unit = i.unit ? ` ${i.unit}` : '';
+    const agreed = i.agreed !== null ? `agreed at ${i.agreed}${unit}` : 'no agreement';
+    return `- ${i.name}: ${agreed}. Trainee target ${i.learnerTarget}${unit}, trainee walk-away ${i.learnerReservation}${unit}, counterpart walk-away ${i.counterpartReservation}${unit}. Last ask ${i.learnerLastAsk ?? 'none'}, last offer ${i.counterpartLastOffer ?? 'none'}.${i.leftOnTable ? ` Left on the table: ${i.leftOnTable}${unit}.` : ''}`;
+  });
+  return `
+Deal outcome (computed, treat as fact):
+${deal.reached ? 'A deal was reached.' : 'No deal was reached.'}
+${lines.join('\n')}
+Use these numbers when judging anchoring, concessions and closing.
+`;
+}
+
 export function buildEvaluationPrompt(
   messages: EvaluationMessage[],
   evaluationCriteria: string,
   persona: EvaluationPersona,
-  scenario: EvaluationScenario
+  scenario: EvaluationScenario,
+  deal?: DealOutcome
 ): string {
   const criteria = readEvaluationCriteria(evaluationCriteria);
   const frameworks = criteria.frameworks;
@@ -64,7 +81,7 @@ Evaluation Frameworks:
 ${frameworksList}
 
 ${criteria.scoringInstructions || 'Evaluate the trainee on each framework. A score of 70+ indicates competence; 85+ indicates excellence.'}
-
+${describeDeal(deal)}
 TRANSCRIPT:
 ---
 ${transcript}
@@ -178,7 +195,8 @@ export function parseEvaluationResponse(raw: string): EvaluationResult {
 export async function evaluateConversation(
   messages: EvaluationMessage[],
   persona: EvaluationPersona,
-  scenario: EvaluationScenario
+  scenario: EvaluationScenario,
+  deal?: DealOutcome
 ): Promise<EvaluationResult> {
   const emptyFallback: EvaluationResult = {
     overallScore: 0,
@@ -202,12 +220,7 @@ export async function evaluateConversation(
     : messages;
 
   try {
-    const prompt = buildEvaluationPrompt(
-      evalMessages,
-      scenario.evaluationCriteria,
-      persona,
-      scenario
-    );
+    const prompt = buildEvaluationPrompt(evalMessages, scenario.evaluationCriteria, persona, scenario, deal);
 
     const chain = LLMProviderFactory.getProviderChain();
     const response = await chain.generateResponse(

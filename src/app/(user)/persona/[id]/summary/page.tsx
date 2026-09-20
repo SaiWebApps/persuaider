@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/client';
 import Link from 'next/link';
-import { readFrameworkScores, readLLMFeedback, readWinningArguments } from '@/lib/codec/summary';
+import { readDealOutcome, readFrameworkScores, readLLMFeedback, readWinningArguments } from '@/lib/codec/summary';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 interface SummaryPageProps {
@@ -52,6 +52,15 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
   const winningArguments = readWinningArguments(conversation.summary.winningArguments);
   const llmFeedback = readLLMFeedback(conversation.summary.llmFeedback);
   const frameworkScores = readFrameworkScores(conversation.summary.frameworkScores);
+  const deal = readDealOutcome(conversation.summary.deal);
+
+  const fmt = (value: number | null, unit?: string) => {
+    if (value === null) return '—';
+    const n = value.toLocaleString('en-US');
+    if (unit === 'USD' || unit === '$') return `$${n}`;
+    if (unit === '%') return `${n}%`;
+    return unit ? `${n} ${unit}` : n;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -88,15 +97,75 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
           </div>
           <p className="text-gray-700 dark:text-gray-300">{conversation.persona.description}</p>
 
-          {conversation.summary.overallScore != null && (
+          {conversation.summary.overallScore != null ? (
             <div className="mt-4 text-center">
               <span className="text-4xl font-bold text-indigo-600" data-testid="overall-score">
                 {conversation.summary.overallScore}
               </span>
               <span className="text-lg text-gray-500 dark:text-gray-400">/100</span>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Weighted from the framework scores below</p>
+            </div>
+          ) : (
+            <div className="mt-4 text-center" data-testid="not-scored">
+              <span className="text-2xl font-semibold text-gray-500 dark:text-gray-400">Not scored</span>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">The evaluator did not return usable framework scores for this session.</p>
             </div>
           )}
         </div>
+
+        {/* Deal outcome */}
+        {deal && deal.issues.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6" data-testid="deal-outcome">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Deal</h3>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${deal.reached ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
+                data-testid="deal-status"
+              >
+                {deal.reached ? 'Deal reached' : 'No deal'}
+              </span>
+            </div>
+            <div className="space-y-4">
+              {deal.issues.map((issue) => (
+                <div key={issue.name} className="border border-gray-200 dark:border-gray-700 rounded-md p-4">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{issue.name}</span>
+                    <span className="text-lg font-bold text-indigo-600" data-testid="deal-agreed">
+                      {issue.agreed !== null ? fmt(issue.agreed, issue.unit) : 'No agreement'}
+                    </span>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                    <dt className="text-gray-500 dark:text-gray-400">Your target</dt>
+                    <dd className="text-right text-gray-900 dark:text-gray-100">{fmt(issue.learnerTarget, issue.unit)}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Your walk-away</dt>
+                    <dd className="text-right text-gray-900 dark:text-gray-100">{fmt(issue.learnerReservation, issue.unit)}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Their hidden limit</dt>
+                    <dd className="text-right text-gray-900 dark:text-gray-100">{fmt(issue.counterpartReservation, issue.unit)}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Your last ask / their last offer</dt>
+                    <dd className="text-right text-gray-900 dark:text-gray-100">
+                      {fmt(issue.learnerLastAsk, issue.unit)} / {fmt(issue.counterpartLastOffer, issue.unit)}
+                    </dd>
+                    {issue.learnerCapture !== null && (
+                      <>
+                        <dt className="text-gray-500 dark:text-gray-400">Share of your range captured</dt>
+                        <dd className="text-right text-gray-900 dark:text-gray-100">{issue.learnerCapture}%</dd>
+                      </>
+                    )}
+                    {issue.leftOnTable !== null && issue.leftOnTable > 0 && (
+                      <>
+                        <dt className="text-gray-500 dark:text-gray-400">Left on the table</dt>
+                        <dd className="text-right text-amber-700 dark:text-amber-300">{fmt(issue.leftOnTable, issue.unit)}</dd>
+                      </>
+                    )}
+                    {issue.withinBothLimits === false && (
+                      <dd className="col-span-2 text-amber-700 dark:text-amber-300">This figure is outside one side&apos;s walk-away limit.</dd>
+                    )}
+                  </dl>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LLM Feedback */}
         {llmFeedback && (

@@ -107,11 +107,11 @@ describe('Summary - No User Messages (End Negotiation Immediately)', () => {
     const res = await POST(summaryReq(), createParams('c1'));
     expect(res.status).toBe(200);
 
-    // Should still create a summary record (with score 0)
+    // Still creates a summary record; with no framework scores it is "not scored" (null), never a fake number
     expect(mockSummary.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          overallScore: 0,
+          overallScore: null,
         }),
       })
     );
@@ -265,9 +265,10 @@ describe('Summary - Out-of-Range Evaluation Scores', () => {
 
     const res = await POST(summaryReq(), createParams('c1'));
     expect(res.status).toBe(200);
+    // The model's overall is ignored; with no framework scores the summary is "not scored"
     expect(mockSummary.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ overallScore: 0 }),
+        data: expect.objectContaining({ overallScore: null }),
       })
     );
   });
