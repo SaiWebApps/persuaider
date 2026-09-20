@@ -117,22 +117,25 @@ export async function POST(
       },
     ];
 
-    // Generate AI response using LLM with scenario context
-    let aiResponse: string;
+    // Generate the persona's reply. An empty reply is retried once; a failure is an
+    // honest 502, never a canned sentence pretending to be the persona.
+    let aiResponse = '';
     let aiMood: string = DEFAULT_MOOD;
-
     try {
-      const llmResponse = await generatePersonaResponse(conversation.persona, allMessages, conversation.scenario, {
-        meter: { userId: session.user.id, purpose: 'turn', conversationId: id },
-      });
-
-      const parsed = parseMoodResponse(llmResponse.content);
-      aiResponse = parsed.content;
-      aiMood = parsed.mood;
+      for (let attempt = 0; attempt < 2 && !aiResponse.trim(); attempt++) {
+        const llmResponse = await generatePersonaResponse(conversation.persona, allMessages, conversation.scenario, {
+          meter: { userId: session.user.id, purpose: 'turn', conversationId: id },
+        });
+        const parsed = parseMoodResponse(llmResponse.content);
+        aiResponse = parsed.content;
+        aiMood = parsed.mood;
+      }
     } catch (error) {
       console.error('LLM generation error:', error);
-      aiResponse = generatePlaceholderResponse();
-      aiMood = DEFAULT_MOOD;
+    }
+    if (!aiResponse.trim()) {
+      await prisma.message.delete({ where: { id: userMessage.id } }).catch(() => undefined);
+      return NextResponse.json({ error: 'The counterpart could not reply right now. Please send your message again.' }, { status: 502 });
     }
 
     // Create AI message
@@ -157,16 +160,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
-
-function generatePlaceholderResponse(): string {
-  const responses = [
-    "I hear what you're saying, but I'm still not convinced. Can you explain more?",
-    "That's an interesting point, but what about the downsides?",
-    "I understand your perspective, but I still have my concerns.",
-    "You make a good argument, but I need more evidence.",
-    "I appreciate you trying to convince me, but I'm not there yet.",
-  ];
-
-  return responses[Math.floor(Math.random() * responses.length)];
 }

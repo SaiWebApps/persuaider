@@ -40,11 +40,20 @@ async function settled(page: Page): Promise<string> {
 }
 
 async function say(page: Page, turn: string): Promise<string> {
-  const before = await page.locator('[data-testid="assistant-message"]').count();
-  await page.fill('[data-testid="chat-input"]', turn);
-  await page.click('[data-testid="send-button"]');
-  await page.waitForFunction((n) => document.querySelectorAll('[data-testid="assistant-message"]').length >= n, before + 1, { timeout: 60000 });
-  return settled(page);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const before = await page.locator('[data-testid="assistant-message"]').count();
+    await page.fill('[data-testid="chat-input"]', turn);
+    await page.click('[data-testid="send-button"]');
+    // Either the reply arrives or the app reports it could not reply (then we resend once).
+    const replied = await page
+      .waitForFunction((n) => document.querySelectorAll('[data-testid="assistant-message"]').length >= n || !!document.querySelector('[data-testid="chat-error"]'), before + 1, { timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    const errored = await page.locator('[data-testid="chat-error"]').isVisible().catch(() => false);
+    if (replied && !errored) return settled(page);
+    if (!errored) throw new Error('no reply and no error within 60s');
+  }
+  throw new Error('the counterpart failed to reply twice');
 }
 
 /** First dollar figure in a reply, e.g. "$111,000" → 111000; null if none. */
@@ -82,6 +91,7 @@ test('deal outcome, computed score, hidden limit revealed on the second attempt,
       ? `Fine. I accept your offer of $${offered.toLocaleString('en-US')}. Let us put it in writing.`
       : 'Fine. I accept your offer. Let us put it in writing.'
   );
+  if (offered) await say(page, `Great. To be clear, we have a deal at $${offered.toLocaleString('en-US')}. Please confirm and I will sign today.`);
   await endSession(page);
 
   const deal = page.locator('[data-testid="deal-outcome"]');

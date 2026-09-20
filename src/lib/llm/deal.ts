@@ -45,7 +45,7 @@ For each issue, report as plain numbers (no currency symbols, no commas, no unit
 - counterpartLastOffer: the last figure ${personaName} offered, or null if none
 - agreed: the figure both sides explicitly agreed on, or null if they did not agree
 
-"reached" is true only if both sides clearly accepted the same terms. A demand that was not accepted is not an agreement. Convert shorthand like "118k" to 118000.
+"reached" is true when both sides clearly accepted the same terms. Offer plus acceptance is enough: if one side explicitly accepted a figure the other side had put on the table, the deal is reached at that figure even if the offering side did not restate it afterwards. A demand that was never accepted by the other side is not an agreement. Convert shorthand like "118k" to 118000.
 
 TRANSCRIPT:
 ---

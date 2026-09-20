@@ -121,7 +121,16 @@ export async function POST(
         }
 
         // Parse mood from full response
-        const parsed = parseMoodResponse(fullContent);
+        let parsed = parseMoodResponse(fullContent);
+        if (!parsed.content.trim()) {
+          // Empty reply (rare): one non-streaming retry before reporting an error.
+          console.warn('[stream] empty persona reply; retrying once');
+          const retry = await chain.generateResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
+          await recordLlmCall(meter, retry);
+          parsed = parseMoodResponse(retry.content);
+          if (!parsed.content.trim()) throw new Error('empty persona reply after retry');
+          send({ type: 'chunk', text: parsed.content });
+        }
 
         // Save assistant message
         const assistantMessage = await prisma.message.create({
@@ -145,7 +154,8 @@ export async function POST(
         console.error('Streaming error:', error);
         // Tokens were consumed even if the client disconnected mid-stream: bill what streamed.
         await billEstimate(providerName);
-        send({ type: 'error', message: 'Failed to generate response' });
+        await prisma.message.delete({ where: { id: userMessage.id } }).catch(() => undefined);
+        send({ type: 'error', message: 'The counterpart could not reply right now. Please send your message again.' });
       } finally {
         if (!closed) {
           closed = true;
