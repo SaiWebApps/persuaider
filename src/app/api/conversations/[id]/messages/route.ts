@@ -7,6 +7,8 @@ import { DEFAULT_MOOD } from '@/types';
 import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
 import { assertWithinBudget } from '@/lib/llm/usage';
 import { BudgetExceededError } from '@/types';
+import { winState } from '@/lib/conversation/win';
+import { readWinCondition } from '@/lib/codec/scenario';
 
 // POST /api/conversations/[id]/messages - Add message to conversation
 export async function POST(
@@ -59,8 +61,10 @@ export async function POST(
       include: {
         persona: { select: personaPromptSelect },
         scenario: { select: scenarioPromptSelect },
+        // Latest 50 messages (returned newest first; reversed below), so long sessions
+        // keep the recent context rather than the opening.
         messages: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'desc' },
           take: 50,
         },
       },
@@ -87,6 +91,11 @@ export async function POST(
       );
     }
 
+    const userTurns = await prisma.message.count({ where: { conversationId: id, role: 'user' } });
+    if (winState(Array.from({ length: userTurns }, () => ({ role: 'user' })), readWinCondition(conversation.scenario.winCondition)).limitReached) {
+      return NextResponse.json({ error: 'You have used all the messages for this scenario. End the negotiation to get your summary.', code: 'limit_reached' }, { status: 400 });
+    }
+
     try {
       await assertWithinBudget(session.user.id);
     } catch (error) {
@@ -107,7 +116,7 @@ export async function POST(
 
     // Prepare message history
     const allMessages = [
-      ...conversation.messages.map((m: { role: string; content: string }) => ({
+      ...[...conversation.messages].reverse().map((m: { role: string; content: string }) => ({
         role: m.role,
         content: m.content,
       })),

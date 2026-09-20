@@ -29,6 +29,7 @@ const mockConversation = {
 };
 const mockMessage = {
   create: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 const mockUserDb = {
   findUnique: jest.fn(),
@@ -283,5 +284,26 @@ describe('POST /api/conversations/[id]/messages - budget', () => {
     expect(data.code).toBe('budget_exceeded');
     expect(data.error).toContain('Daily AI budget reached');
     expect(mockMessage.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/conversations/[id]/messages - win condition', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('returns 400 limit_reached once the learner has used all messages, before any model call', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
+    mockConversation.findUnique.mockResolvedValue({
+      id: 'c1', userId: 'user-1', status: 'in_progress', persona: {},
+      scenario: { winCondition: JSON.stringify({ type: 'manual', maxMessages: 2 }) },
+      messages: [{ role: 'assistant', content: 'hi' }, { role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }, { role: 'user', content: 'c' }, { role: 'assistant', content: 'd' }],
+    });
+    mockMessage.count = jest.fn().mockResolvedValue(2);
+    const res = await POST(createRequest({ content: 'one more' }), { params: Promise.resolve({ id: 'c1' }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('limit_reached');
+    expect(mockMessage.count).toHaveBeenCalledWith({ where: { conversationId: 'c1', role: 'user' } });
+    expect(mockMessage.create).not.toHaveBeenCalled();
+    expect(mockGeneratePersonaResponse).not.toHaveBeenCalled();
   });
 });

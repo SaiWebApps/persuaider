@@ -43,6 +43,7 @@ const mockConversation = {
 };
 const mockMessage = {
   create: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 
 jest.mock('@/lib/db/client', () => ({

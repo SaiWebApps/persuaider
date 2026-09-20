@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { DEFAULT_MOOD } from '@/types';
+import type { WinCondition } from '@/types';
+import { winState } from '@/lib/conversation/win';
 
 interface Message {
   id: string;
@@ -30,13 +32,15 @@ interface ChatContainerProps {
   persona: Persona;
   scenarioTitle: string;
   initialMessages: Message[];
+  winCondition?: WinCondition;
 }
 
-export function ChatContainer({ conversationId, persona, scenarioTitle, initialMessages }: ChatContainerProps) {
+export function ChatContainer({ conversationId, persona, scenarioTitle, initialMessages, winCondition }: ChatContainerProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const win = winState(messages, winCondition ?? { type: 'manual' });
   const [showAbortModal, setShowAbortModal] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [aborting, setAborting] = useState(false);
@@ -352,6 +356,20 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
       </div>
 
       {/* Input Area */}
+      {win.limitReached && (
+        <div
+          role="status"
+          data-testid="limit-banner"
+          className="mx-4 mb-2 rounded-md border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm text-indigo-900 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200"
+        >
+          You have used all {win.maxMessages} messages for this scenario. End the negotiation to get your summary.
+        </div>
+      )}
+      {!win.limitReached && win.remaining !== null && win.remaining <= 2 && (
+        <p className="mx-4 mb-1 text-xs text-gray-500 dark:text-gray-400" data-testid="limit-remaining">
+          {win.remaining} {win.remaining === 1 ? 'message' : 'messages'} left.
+        </p>
+      )}
       {sendError && (
         <div
           role="alert"
@@ -361,7 +379,7 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
           {sendError}
         </div>
       )}
-      <ChatInput onSendMessage={handleSendMessage} disabled={isWaitingForResponse} />
+      <ChatInput onSendMessage={handleSendMessage} disabled={isWaitingForResponse || win.limitReached} />
 
       {/* End Negotiation Modal */}
       <Modal

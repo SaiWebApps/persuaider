@@ -8,6 +8,8 @@ import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/co
 import { assertWithinBudget, estimatedResponse, recordLlmCall } from '@/lib/llm/usage';
 import { LLM_MODELS } from '@/lib/llm/models';
 import { BudgetExceededError } from '@/types';
+import { winState } from '@/lib/conversation/win';
+import { readWinCondition } from '@/lib/codec/scenario';
 
 export async function POST(
   request: NextRequest,
@@ -36,7 +38,8 @@ export async function POST(
     include: {
       persona: { select: personaPromptSelect },
       scenario: { select: scenarioPromptSelect },
-      messages: { orderBy: { createdAt: 'asc' as const }, take: 50 },
+      // Latest 50 messages (newest first; reversed below).
+      messages: { orderBy: { createdAt: 'desc' as const }, take: 50 },
     },
   });
 
@@ -48,6 +51,14 @@ export async function POST(
   }
   if (conversation.status !== 'in_progress') {
     return new Response(JSON.stringify({ error: 'Conversation is not active' }), { status: 400 });
+  }
+
+  const userTurns = await prisma.message.count({ where: { conversationId: id, role: 'user' } });
+  if (winState(Array.from({ length: userTurns }, () => ({ role: 'user' })), readWinCondition(conversation.scenario.winCondition)).limitReached) {
+    return new Response(JSON.stringify({ error: 'You have used all the messages for this scenario. End the negotiation to get your summary.', code: 'limit_reached' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -69,7 +80,7 @@ export async function POST(
 
   // Build context
   const allMessages = [
-    ...conversation.messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+    ...[...conversation.messages].reverse().map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
     { role: 'user', content: content.trim() },
   ];
   const contextMessages = buildConversationContext(conversation.persona, allMessages, conversation.scenario);

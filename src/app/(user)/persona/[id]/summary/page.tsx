@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { readDealOutcome, readFrameworkScores, readLLMFeedback, readWinningArguments } from '@/lib/codec/summary';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { ReattemptButton } from '@/components/summary/ReattemptButton';
+import { FeltRealPrompt } from '@/components/summary/FeltRealPrompt';
+import { readWinCondition } from '@/lib/codec/scenario';
 
 interface SummaryPageProps {
   params: Promise<{ id: string }>;
@@ -37,6 +39,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
           title: true,
           userRole: true,
           aiRole: true,
+          winCondition: true,
         },
       },
       summary: true,
@@ -63,6 +66,8 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
     where: { scenarioId: conversation.scenarioId, userId: session.user.id, status: 'completed', messages: { some: { role: 'user' } } },
   });
   const revealLimit = completedAttempts >= 2;
+  const winCondition = readWinCondition(conversation.scenario.winCondition);
+  const threshold = winCondition.type === 'score_threshold' ? (winCondition.threshold ?? null) : null;
 
   const fmt = (value: number | null, unit?: string) => {
     if (value === null) return '—';
@@ -91,6 +96,8 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
 
       <main className="max-w-4xl mx-auto py-8 px-4">
         {/* Persona + Scenario Info */}
+        <FeltRealPrompt conversationId={conversation.id} initial={conversation.summary.feltReal ?? null} />
+
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -115,7 +122,16 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
               <span className="text-lg text-gray-500 dark:text-gray-400">/100</span>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Weighted from the framework scores below</p>
             </div>
-          ) : (
+          ) : null}
+          {threshold !== null && conversation.summary.overallScore != null && (
+            <p className="mt-2 text-center text-sm" data-testid="win-condition">
+              Target score {threshold} (by the evaluator&apos;s score):{' '}
+              <span className={conversation.summary.overallScore >= threshold ? 'font-medium text-green-700 dark:text-green-300' : 'font-medium text-amber-700 dark:text-amber-300'}>
+                {conversation.summary.overallScore >= threshold ? 'met' : 'not met'}
+              </span>
+            </p>
+          )}
+          {conversation.summary.overallScore == null && (
             <div className="mt-4 text-center" data-testid="not-scored">
               <span className="text-2xl font-semibold text-gray-500 dark:text-gray-400">Not scored</span>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">The evaluator did not return usable framework scores for this session.</p>

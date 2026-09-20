@@ -26,7 +26,7 @@ export const conversationInclude = {
     },
   },
   scenario: {
-    select: { id: true, title: true, userRole: true, aiRole: true },
+    select: { id: true, title: true, userRole: true, aiRole: true, winCondition: true },
   },
   messages: { orderBy: { createdAt: 'asc' as const } },
 } satisfies Prisma.ConversationInclude;
