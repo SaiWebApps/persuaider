@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { FileUpload } from '@/components/ui/FileUpload';
 import type { GeneratedScenario } from '@/types';
+import { IssueNumbersEditor } from '@/components/scenarios/IssueNumbersEditor';
 
 interface GenerateScenarioModalProps {
   isOpen: boolean;
@@ -217,57 +218,7 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Numbers (confirm or edit; the counterpart never sees yours, you never see theirs during play)
               </label>
-              <div className="space-y-3">
-                {generatedScenario.issues.map((issue, idx) => {
-                  const setNumber = (side: 'learner' | 'counterpart', key: 'target' | 'reservation', value: string) => {
-                    const n = Number(value);
-                    if (!Number.isFinite(n)) return;
-                    const issues = generatedScenario.issues.map((it, i) => (i === idx ? { ...it, [side]: { ...it[side], [key]: n } } : it));
-                    setGeneratedScenario({ ...generatedScenario, issues });
-                  };
-                  const field = (side: 'learner' | 'counterpart', key: 'target' | 'reservation') => (
-                    <label className="flex flex-col text-xs text-gray-600 dark:text-gray-400">
-                      {side === 'learner' ? 'Your' : 'Their'} {key === 'target' ? 'target' : 'walk-away'}
-                      <input
-                        type="number"
-                        value={issue[side][key]}
-                        onChange={(e) => setNumber(side, key, e.target.value)}
-                        data-testid={`issue-${idx}-${side}-${key}`}
-                        className="mt-1 w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </label>
-                  );
-                  const higher = issue.learnerWants === 'higher';
-                  const zoneLow = higher ? issue.learner.reservation : issue.counterpart.reservation;
-                  const zoneHigh = higher ? issue.counterpart.reservation : issue.learner.reservation;
-                  const directionOk = higher
-                    ? issue.learner.target >= issue.learner.reservation && issue.counterpart.target <= issue.counterpart.reservation
-                    : issue.learner.target <= issue.learner.reservation && issue.counterpart.target >= issue.counterpart.reservation;
-                  const zone = !directionOk
-                    ? 'Targets must be on the right side of the walk-aways'
-                    : zoneLow <= zoneHigh
-                      ? `Deal zone: ${zoneLow.toLocaleString('en-US')} – ${zoneHigh.toLocaleString('en-US')}`
-                      : 'No overlap: no deal is possible with these limits';
-                  return (
-                    <div key={idx} className="p-2 border border-gray-200 dark:border-gray-600 rounded text-sm" data-testid={'issue-' + idx}>
-                      <div className="font-medium text-gray-900 dark:text-gray-100">
-                        {issue.name}
-                        {issue.unit ? <span className="text-gray-500 dark:text-gray-400 ml-1">({issue.unit})</span> : null}
-                        <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">you want it {issue.learnerWants}</span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-3">
-                        {field('learner', 'target')}
-                        {field('learner', 'reservation')}
-                        {field('counterpart', 'target')}
-                        {field('counterpart', 'reservation')}
-                      </div>
-                      <p className={`mt-2 text-xs ${directionOk && zoneLow <= zoneHigh ? 'text-gray-600 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}`} data-testid={`issue-${idx}-zone`}>
-                        {zone}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+              <IssueNumbersEditor issues={generatedScenario.issues} onChange={(issues) => setGeneratedScenario({ ...generatedScenario, issues })} />
             </div>
           )}
           {generatedScenario.personas.length > 0 && (

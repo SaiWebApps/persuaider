@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 const NOTICES: Record<string, string> = {
   'join-required': 'Join a scenario before practicing with its personas. Use a join code below or pick one from Explore.',
   'persona-missing': 'That persona no longer exists.',
+  'not-your-scenario': 'Only the creator of a scenario can edit it.',
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
@@ -68,6 +69,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     description: m.scenario.description,
     userRole: m.scenario.userRole,
     aiRole: m.scenario.aiRole,
+    canEdit: m.scenario.createdById === session.user.id || session.user.role === 'admin',
     // The side the learner plays: the scenario's learnerRoleId, else the first role no persona plays.
     learnerRoleName:
       m.scenario.roles.length > 0

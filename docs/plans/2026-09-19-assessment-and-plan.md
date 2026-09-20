@@ -387,3 +387,15 @@ their own messages). The other two Phase 1 items were split out, not skipped: sl
 learner picks a side (Conversation.roleId, role brief reaches the prompt for that side);
 slice 10 = generate-scenario modal mounted on the dashboard with AI-proposed Issues the
 author confirms.
+
+## 13. Slices 9–11 shipped (2026-09-20); slice 12
+
+Shipped: learner plays a side with a confidential brief (9); Generate with AI proposes sides,
+briefs, personas and Issue numbers the author confirms, unlisted by default (10); the creator
+edits briefs, numbers, learner side and visibility (11). Forks are unlisted too.
+
+Slice 12 (goal reviewer's recommendation, accepted): the ten-strangers gate needs strangers.
+`/` redirects to login and nothing is shareable, so the gate can never trip. Ship a public
+landing page and a shareable scenario link `/s/[joinCode]` (title, sides, a sign-up button
+that auto-joins), so a creator can send a scenario to a friend. Slice 13: add/remove Issues
+and edit personas in the editor.

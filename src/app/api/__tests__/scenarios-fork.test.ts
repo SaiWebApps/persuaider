@@ -252,13 +252,13 @@ describe('POST /api/scenarios/[id]/fork', () => {
     expect(createCall.data.issues).toBe(publishedPublicScenario.issues);
   });
 
-  it('fork sets visibility to public and status to published', async () => {
+  it('fork is unlisted (the forker may publish it later) and published', async () => {
     mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
     mockScenario.findUnique.mockResolvedValue(publishedPublicScenario);
     const { request, params } = req('s1');
     await POST(request, { params });
     const createCall = mockScenario.create.mock.calls[0][0];
-    expect(createCall.data.visibility).toBe('public');
+    expect(createCall.data.visibility).toBe('unlisted');
     expect(createCall.data.status).toBe('published');
   });
 

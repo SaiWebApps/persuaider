@@ -16,6 +16,7 @@ interface ScenarioWithPersonas {
   userRole: string;
   aiRole: string;
   learnerRoleName?: string | null;
+  canEdit?: boolean;
   personas: PersonaWithStatus[];
 }
 
@@ -280,7 +281,14 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
           <section key={scenario.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             {/* Scenario header */}
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{scenario.title}</h3>
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{scenario.title}</h3>
+                {scenario.canEdit && (
+                  <a href={`/scenario/${scenario.id}/edit`} className="text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline" data-testid={`edit-scenario-${scenario.id}`}>
+                    Edit
+                  </a>
+                )}
+              </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{scenario.description}</p>
               <div className="flex gap-4 mt-2">
                 <span className="inline-flex items-center text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium" data-testid="you-play">

@@ -76,7 +76,8 @@ export async function POST(
       contextNotes: source.contextNotes,
       issues: source.issues,
       forkedFromId: source.id,
-      visibility: 'public',
+      // A copy is the forker's own scenario: unlisted until they choose to publish it.
+      visibility: 'unlisted',
       status: 'published',
       createdById: session.user.id,
       joinCode,
