@@ -55,6 +55,7 @@ model Scenario {
 
   contextNotes        String?        // Free-text constraints/requirements from scenario creator
   issues              String         @default("[]") // JSON array of negotiable Issues with per-side target/reservation/weight
+  learnerRoleId       String?        // which Role the learner plays; Issues' "learner" side means this Role
 
   forkedFrom          Scenario?      @relation("ScenarioForks", fields: [forkedFromId], references: [id], onDelete: SetNull)
   forks               Scenario[]     @relation("ScenarioForks")

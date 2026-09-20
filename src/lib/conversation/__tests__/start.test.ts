@@ -117,16 +117,15 @@ describe('resolveLearnerRole', () => {
     db.role.findMany.mockResolvedValue([]);
     await expect(resolveLearnerRole('s1', 'r-manager')).resolves.toBeNull();
   });
-  it('defaults to the first role the persona does not play', async () => {
+  it('prefers the scenario\'s learnerRoleId', async () => {
+    db.scenario.findUnique.mockResolvedValue({ createdById: 'creator', learnerRoleId: 'r-employee' });
+    await expect(resolveLearnerRole('s1', 'r-manager')).resolves.toBe('r-employee');
+    expect(db.role.findMany).not.toHaveBeenCalled();
+  });
+  it('otherwise takes the first role the persona does not play', async () => {
     db.role.findMany.mockResolvedValue(roles);
     await expect(resolveLearnerRole('s1', 'r-manager')).resolves.toBe('r-employee');
     await expect(resolveLearnerRole('s1', 'r-employee')).resolves.toBe('r-manager');
-  });
-  it('accepts an explicit side that exists and is not the persona\'s own', async () => {
-    db.role.findMany.mockResolvedValue(roles);
-    await expect(resolveLearnerRole('s1', 'r-manager', 'r-employee')).resolves.toBe('r-employee');
-    await expect(resolveLearnerRole('s1', 'r-manager', 'r-manager')).rejects.toBeInstanceOf(NotFoundError);
-    await expect(resolveLearnerRole('s1', 'r-manager', 'r-other')).rejects.toBeInstanceOf(NotFoundError);
   });
   it('stores the learner side on the new conversation', async () => {
     db.role.findMany.mockResolvedValue(roles);

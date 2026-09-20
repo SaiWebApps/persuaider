@@ -167,6 +167,7 @@ async function main() {
       displayOrder: 2,
     },
   });
+  await prisma.scenario.update({ where: { id: scenario.id }, data: { learnerRoleId: employeeRole.id } });
   console.log('Created roles:', employeeRole.name, managerRole.name);
 
   // Create personas for this scenario

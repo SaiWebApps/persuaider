@@ -68,10 +68,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     description: m.scenario.description,
     userRole: m.scenario.userRole,
     aiRole: m.scenario.aiRole,
-    // The side the learner plays: the first scenario role no persona plays (null without roles).
+    // The side the learner plays: the scenario's learnerRoleId, else the first role no persona plays.
     learnerRoleName:
       m.scenario.roles.length > 0
-        ? (m.scenario.roles.find((r) => !m.scenario.personas.some((p) => p.role?.id === r.id))?.name ?? null)
+        ? (m.scenario.roles.find((r) => r.id === m.scenario.learnerRoleId)?.name ??
+          m.scenario.roles.find((r) => !m.scenario.personas.some((p) => p.role?.id === r.id))?.name ??
+          null)
         : null,
     personas: m.scenario.personas.map((persona) => {
       const conversation = conversations.find(

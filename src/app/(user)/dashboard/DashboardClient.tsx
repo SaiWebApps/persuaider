@@ -247,9 +247,11 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
                 <span className="inline-flex items-center text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium" data-testid="you-play">
                   {scenario.learnerRoleName ? `You play: ${scenario.learnerRoleName}` : `Your role: ${scenario.userRole}`}
                 </span>
-                <span className="inline-flex items-center text-xs text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded-full font-medium">
-                  AI role: {scenario.aiRole}
-                </span>
+                {!scenario.learnerRoleName && (
+                  <span className="inline-flex items-center text-xs text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded-full font-medium">
+                    AI role: {scenario.aiRole}
+                  </span>
+                )}
               </div>
             </div>
 

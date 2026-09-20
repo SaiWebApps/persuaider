@@ -5,7 +5,7 @@ import { loginAsDemo } from './helpers';
  * Slice 9 acceptance (Salary Negotiation has two sides: Employee and Manager):
  *  1. The dashboard says "You play: Employee" and groups the personas under "Against: Manager".
  *  2. Opening Pat Morales shows "You play: Employee" with the confidential Employee brief.
- *  3. The persona is told the trainee's side but not their brief (checked by asking).
+ *  (The summary's "You played: Employee" line is asserted in deal.spec.ts, which completes a session.)
  */
 test('the learner plays a side and sees their confidential brief', async ({ page }) => {
   test.setTimeout(120000);

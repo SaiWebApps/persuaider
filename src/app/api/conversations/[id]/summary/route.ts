@@ -53,6 +53,7 @@ export async function POST(
         },
         scenario: true,
         summary: true,
+        role: { select: { name: true, description: true } },
       },
     });
 
@@ -106,7 +107,7 @@ export async function POST(
     // per-framework scores, computed here; a failed evaluation is "not scored".
     let evaluation;
     try {
-      evaluation = await evaluateConversation(transcript, conversation.persona, conversation.scenario, deal ?? undefined, {
+      evaluation = await evaluateConversation(transcript, conversation.persona, { ...conversation.scenario, learnerRole: conversation.role }, deal ?? undefined, {
         userId: session.user.id,
         purpose: 'evaluation',
         conversationId: id,

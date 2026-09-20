@@ -11,7 +11,8 @@
  */
 const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({ auth: () => mockAuthFn() }));
-jest.mock('@/lib/llm', () => ({ generatePersonaResponse: jest.fn().mockResolvedValue({ content: '{"mood":"neutral","content":"ok"}' }) }));
+const mockGenerate = jest.fn().mockResolvedValue({ content: '{"mood":"neutral","content":"ok"}' });
+jest.mock('@/lib/llm', () => ({ generatePersonaResponse: (...args: unknown[]) => mockGenerate(...args) }));
 jest.mock('@/lib/llm/usage', () => ({
   assertWithinBudget: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
   recordLlmCall: jest.fn().mockResolvedValue(undefined),
@@ -44,13 +45,16 @@ describeIfPostgres('summary PATCH and message limit (real database)', () => {
         title: `Limit ${tag}`, description: 'd', userRole: 'u', aiRole: 'a', evaluationCriteria: '{}',
         winCondition: JSON.stringify({ type: 'manual', maxMessages: 30 }),
         joinCode: `L${tag}`.slice(0, 20), createdById: ownerId,
-        personas: { create: { name: 'P', description: 'd', roleType: 'r' } },
+        roles: { create: [{ name: 'Employee', description: 'LEARNER-SECRET-BRIEF', displayOrder: 1 }, { name: 'Manager', description: 'MANAGER-BRIEF', displayOrder: 2 }] },
         members: { create: { userId: ownerId } },
       },
-      include: { personas: true },
+      include: { roles: true },
     });
+    await prisma.scenario.update({ where: { id: scenario.id }, data: { learnerRoleId: scenario.roles.find((r) => r.name === 'Employee')!.id } });
+    await prisma.persona.create({ data: { scenarioId: scenario.id, roleId: scenario.roles.find((r) => r.name === 'Manager')!.id, name: 'P', description: 'd', roleType: 'r' } });
+    const firstPersona = await prisma.persona.findFirst({ where: { scenarioId: scenario.id } });
     const conversation = await prisma.conversation.create({
-      data: { userId: ownerId, personaId: scenario.personas[0].id, scenarioId: scenario.id, status: 'completed', summary: { create: { winningArguments: '[]' } } },
+      data: { userId: ownerId, personaId: firstPersona!.id, scenarioId: scenario.id, status: 'completed', summary: { create: { winningArguments: '[]' } } },
     });
     conversationId = conversation.id;
   });
@@ -90,5 +94,24 @@ describeIfPostgres('summary PATCH and message limit (real database)', () => {
     expect(res.status).toBe(400);
     expect((await res.json()).code).toBe('limit_reached');
     expect(await prisma.message.count({ where: { conversationId: convo.id } })).toBe(61);
+  });
+
+  it('the persona prompt input names the learner side but never carries the learner brief', async () => {
+    const persona = await prisma.persona.findFirst({ where: { scenario: { title: `Limit ${tag}` } } });
+    const learnerRole = await prisma.role.findFirst({ where: { scenarioId: persona!.scenarioId, name: 'Employee' } });
+    // One in-progress conversation per user × persona: retire the limit test's conversation first.
+    await prisma.conversation.updateMany({ where: { userId: ownerId, personaId: persona!.id, status: 'in_progress' }, data: { status: 'abandoned' } });
+    const convo = await prisma.conversation.create({ data: { userId: ownerId, personaId: persona!.id, scenarioId: persona!.scenarioId, roleId: learnerRole!.id, status: 'in_progress' } });
+    mockAuthFn.mockResolvedValue({ user: { id: ownerId, role: 'user' } });
+    mockGenerate.mockClear();
+    const res = await sendMessage(
+      new NextRequest(`http://localhost/api/conversations/${convo.id}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: 'hello' }) }),
+      { params: Promise.resolve({ id: convo.id }) }
+    );
+    expect(res.status).toBe(200);
+    const [personaArg, , scenarioArg] = mockGenerate.mock.calls[0];
+    expect(scenarioArg.learnerRole).toEqual({ name: 'Employee' });
+    expect(JSON.stringify([personaArg, scenarioArg])).not.toContain('LEARNER-SECRET-BRIEF');
+    expect(JSON.stringify(personaArg)).toContain('MANAGER-BRIEF');
   });
 });

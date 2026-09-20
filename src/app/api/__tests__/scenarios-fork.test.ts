@@ -7,12 +7,14 @@ jest.mock('@/lib/auth', () => ({ auth: () => mockAuthFn() }));
 
 const mockScenario = { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() };
 const mockPersona = { findMany: jest.fn(), create: jest.fn() };
+const mockRole = { create: jest.fn() };
 const mockUserScenario = { create: jest.fn() };
 const mockUserDb = { findUnique: jest.fn() };
 
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
-    return { scenario: mockScenario, persona: mockPersona, userScenario: mockUserScenario, user: mockUserDb };
+    return { scenario: mockScenario, persona: mockPersona,
+      role: mockRole, userScenario: mockUserScenario, user: mockUserDb };
   },
 }));
 
@@ -275,5 +277,32 @@ describe('POST /api/scenarios/[id]/fork', () => {
     await POST(request, { params });
     const createCall = mockScenario.create.mock.calls[0][0];
     expect(createCall.data.createdById).toBe('u1');
+  });
+});
+
+describe('fork keeps sides', () => {
+  beforeEach(() => jest.clearAllMocks());
+  it('copies roles, re-links each persona to the copied side, and carries the learner side', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
+    mockScenario.findUnique.mockResolvedValue({
+      ...publishedPublicScenario,
+      learnerRoleId: 'r-emp',
+      roles: [
+        { id: 'r-emp', name: 'Employee', description: 'secret A', displayOrder: 1 },
+        { id: 'r-mgr', name: 'Manager', description: 'secret B', displayOrder: 2 },
+      ],
+      personas: [{ id: 'p1', name: 'Alex', description: 'd', roleType: 'r', characteristics: null, initialGreeting: null, displayOrder: 1, roleId: 'r-mgr' }],
+    });
+    mockScenario.create.mockResolvedValue({ id: 'new-s', joinCode: 'ABCD1234' });
+    mockRole.create.mockResolvedValueOnce({ id: 'new-emp' }).mockResolvedValueOnce({ id: 'new-mgr' });
+    mockPersona.create.mockResolvedValue({ id: 'new-p' });
+    mockScenario.update.mockResolvedValue({});
+    const { request, params } = req('s1');
+    const res = await POST(request, { params });
+    expect(res.status).toBeLessThan(300);
+    expect(mockRole.create).toHaveBeenCalledTimes(2);
+    expect(mockRole.create.mock.calls[0][0].data).toMatchObject({ scenarioId: 'new-s', name: 'Employee', description: 'secret A' });
+    expect(mockPersona.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ roleId: 'new-mgr' }) }));
+    expect(mockScenario.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'new-s' }, data: { learnerRoleId: 'new-emp' } }));
   });
 });
