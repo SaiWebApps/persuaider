@@ -371,3 +371,15 @@ Decisions for the owner:
    after N attempts, or never reveal (show capture only)?
 3. Playwright in CI against the preview needs repo secrets (Clerk test keys, a Neon branch URL,
    one LLM key) and spends a few cents per run. Approve?
+
+## 12. Decisions 2026-09-20 (after review) and slice 8
+
+Owner accepted: keep post-hoc deal extraction (ADR 0002); reveal the counterpart's hidden limit
+from the learner's second completed attempt onward; Playwright runs in CI on a real build with
+a real Postgres and the Clerk test instance (secrets set 2026-09-20). Two adversarial
+reviewers (process, goal) gate every slice from now on (CLAUDE.md).
+
+Slice 8 (planned, not blocked): the Phase 1 items skipped earlier, each with click-steps:
+learner picks a side (Conversation.roleId, role brief reaches the prompt for that side);
+generate-scenario modal mounted on the dashboard with AI-proposed Issues the author confirms;
+win condition enforced at runtime (max messages ends the session; score threshold shown).

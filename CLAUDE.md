@@ -77,3 +77,20 @@ Gate order per slice: typecheck, build, unit, integration, Playwright on preview
 - Engine code lives in `src/engine/` and may not import Next.js or Prisma.
 - No engine work until ten strangers have completed a practice session on the preview and
   five say the opponent felt real.
+
+## Review gate (2026-09-20, owner's rule)
+
+No slice merges until two independent adversarial reviewers (separate agents that did not
+write the code) have each read the full diff, run the tests, and reported:
+
+1. Process reviewer: are the working rules obeyed? Acceptance steps present and verbatim in
+   a Playwright test; structural work paired with a visible fix; no timelines; no mock-only
+   tests where behaviour matters; integration tests on real Postgres for touched routes;
+   migrations apply from scratch; nothing claimed that the reviewer could not reproduce.
+2. Goal reviewer: does the slice advance the three capabilities (author and practise with
+   feedback; agent-only simulation over many paths; step in and be graded against the best
+   continuation) in the accepted order, without drift, gold-plating, or quietly skipped items?
+
+Every finding is either fixed in the slice or listed under "Noticed, not done" with the
+reviewer's severity. Both verdicts are quoted in the PR body. "Passed" without both reports
+is not accepted.

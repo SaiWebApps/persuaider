@@ -49,4 +49,12 @@ test('a learner-created scenario gets framework scores on the summary', async ({
   await expect(page.locator('h3:has-text("Framework Scores"), h2:has-text("Framework Scores")').first()).toBeVisible();
   await expect(page.getByText('Preparation').first()).toBeVisible();
   await expect(page.getByText('Deal-making').first()).toBeVisible();
+
+  // Older summaries still render: open one from History.
+  await page.goto('/history');
+  const first = page.locator('a[href*="/summary"]').first();
+  await expect(first).toBeVisible({ timeout: 15000 });
+  await first.click();
+  await page.waitForURL('**/summary', { timeout: 15000 });
+  await expect(page.locator('[data-testid="overall-score"], [data-testid="not-scored"]').first()).toBeVisible();
 });

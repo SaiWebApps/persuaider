@@ -401,7 +401,7 @@ describe('buildEvaluationPrompt - Edge Cases', () => {
       { role: 'assistant', content: 'Tell me more' },
     ];
     const prompt = buildEvaluationPrompt(messages, '{}', mockPersona, mockScenario);
-    expect(prompt).toContain('TRAINEE: I want a raise');
-    expect(prompt).toContain('Alex Chen: Tell me more');
+    expect(prompt).toContain('<message speaker="TRAINEE">\nI want a raise\n</message>');
+    expect(prompt).toContain('<message speaker="COUNTERPART">\nTell me more\n</message>');
   });
 });

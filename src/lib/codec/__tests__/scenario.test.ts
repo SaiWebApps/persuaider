@@ -138,3 +138,30 @@ describe('issues', () => {
     expect(parseIssuesInput([{ ...salary, learner: side }])[0].learner.weight).toBe(100);
   });
 });
+
+describe('issues: direction, duplicates, legacy openness', () => {
+  const { parseIssuesInput, readCharacteristics } = jest.requireActual('../scenario') as typeof import('../scenario');
+  const base = {
+    name: 'Annual salary', unit: 'USD', learnerWants: 'higher',
+    learner: { target: 130000, reservation: 115000, weight: 100 },
+    counterpart: { target: 108000, reservation: 120000, weight: 100 },
+  };
+  it('rejects a learner target below their reservation when they want higher', () => {
+    expect(() => parseIssuesInput([{ ...base, learner: { target: 100000, reservation: 120000, weight: 1 } }])).toThrow('learner target must be at least the reservation');
+  });
+  it('rejects a counterpart target above their reservation when the learner wants higher', () => {
+    expect(() => parseIssuesInput([{ ...base, counterpart: { target: 125000, reservation: 120000, weight: 1 } }])).toThrow('counterpart target must be at most the reservation');
+  });
+  it('accepts the mirror case when the learner wants lower', () => {
+    const price = { ...base, name: 'Price', learnerWants: 'lower', learner: { target: 80, reservation: 100, weight: 1 }, counterpart: { target: 110, reservation: 90, weight: 1 } };
+    expect(parseIssuesInput([price])).toHaveLength(1);
+  });
+  it('rejects duplicate issue names (case-insensitive)', () => {
+    expect(() => parseIssuesInput([base, { ...base, name: 'annual SALARY' }])).toThrow('duplicate');
+  });
+  it('reads legacy 1-10 openness on the 0-1 scale', () => {
+    expect(readCharacteristics('{"openness":2}')).toEqual({ openness: 0.2 });
+    expect(readCharacteristics('{"openness":0.3}')).toEqual({ openness: 0.3 });
+    expect(readCharacteristics('{"openness":11}')).toEqual({});
+  });
+});

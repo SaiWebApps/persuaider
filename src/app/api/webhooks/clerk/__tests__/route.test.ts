@@ -39,7 +39,11 @@ function createRequest(body: string, headers: Record<string, string> = {}) {
 }
 
 function userEvent(type: string, data: Record<string, unknown>) {
-  return { type, data };
+  // Clerk marks addresses as verified before it fires user.created in practice; fixtures default to that.
+  const addresses = Array.isArray(data.email_addresses)
+    ? (data.email_addresses as Array<Record<string, unknown>>).map((a) => ({ verification: { status: 'verified' }, ...a }))
+    : data.email_addresses;
+  return { type, data: { ...data, email_addresses: addresses } };
 }
 
 describe('POST /api/webhooks/clerk', () => {
@@ -277,6 +281,22 @@ describe('POST /api/webhooks/clerk', () => {
           username: expect.stringMatching(/^taken-/),
         }),
       });
+    });
+
+    it('refuses to create or link a row from an unverified email', async () => {
+      const event = userEvent('user.created', {
+        id: 'user_unverified',
+        email_addresses: [{ email_address: 'admin@persuaider.dev', id: 'ea_1', verification: { status: 'unverified' } }],
+        first_name: 'Mallory',
+        last_name: null,
+        username: 'mallory',
+        public_metadata: {},
+      });
+      const req = createRequest(JSON.stringify(event));
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockUser.create).not.toHaveBeenCalled();
+      expect(mockUser.update).not.toHaveBeenCalled();
     });
 
     it('uses role from public_metadata', async () => {

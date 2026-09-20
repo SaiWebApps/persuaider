@@ -61,8 +61,9 @@ export function computeDealOutcome(state: DealState | null | undefined, issues: 
     let leftOnTable: number | null = null;
     if (agreed !== null) {
       const range = lTarget - lReserve;
-      learnerCapture = range === 0 ? 100 : clamp(Math.round(((agreed - lReserve) / range) * 100), 0, 100);
       withinBothLimits = higher ? agreed >= lReserve && agreed <= cReserve : agreed <= lReserve && agreed >= cReserve;
+      const withinOwnLimit = higher ? agreed >= lReserve : agreed <= lReserve;
+      learnerCapture = range === 0 ? (withinOwnLimit ? 100 : 0) : clamp(Math.round(((agreed - lReserve) / range) * 100), 0, 100);
       leftOnTable = higher ? Math.max(0, cReserve - agreed) : Math.max(0, agreed - cReserve);
     }
 

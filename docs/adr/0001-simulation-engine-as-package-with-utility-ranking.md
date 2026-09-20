@@ -9,7 +9,8 @@ The owner does not review code and needs progress to be visible as behavior.
 
 ## Decision
 - Keep the existing Next.js app. Do not rebuild.
-- The engine lives in `packages/sim-engine`: pure TypeScript, no Next.js imports, ESM + Vitest,
+- The engine lives in `src/engine/` (amended 2026-09-19, round 3: a folder with an import lint
+  rule instead of a workspace package): pure TypeScript, no Next.js or Prisma imports,
   runnable in-process for tests. A thin host adapter runs it on Vercel Workflows.
 - The Tree is stored in Postgres (adjacency list + materialized path), never in workflow state.
 - Branching happens only at the learner's side's turns. The counterpart is sampled once per node.

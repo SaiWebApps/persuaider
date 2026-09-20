@@ -24,7 +24,14 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+
+const mockAssertCanPractice = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/conversation/start', () => ({
+  assertCanPractice: (...args: unknown[]) => mockAssertCanPractice(...args),
+}));
+
 import { GET } from '../personas/route';
+import { AuthorizationError } from '@/types';
 
 describe('GET /api/personas', () => {
   beforeEach(() => {
@@ -75,5 +82,17 @@ describe('GET /api/personas', () => {
         orderBy: { displayOrder: 'asc' },
       })
     );
+  });
+});
+
+describe('GET /api/personas - membership', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('returns 403 for a non-member and never queries personas', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'stranger', role: 'user' } });
+    mockAssertCanPractice.mockRejectedValueOnce(new AuthorizationError('Join this scenario before practicing with its personas'));
+    const res = await GET(new NextRequest('http://localhost/api/personas?scenarioId=s1'));
+    expect(res.status).toBe(403);
+    expect(mockPersona.findMany).not.toHaveBeenCalled();
   });
 });

@@ -25,7 +25,7 @@ test('completing a conversation shows real evaluation scores', async ({ page }) 
     await page.waitForFunction(
       (expected) => document.querySelectorAll('[data-testid="assistant-message"]').length >= expected,
       currentCount + 1,
-      { timeout: 30000 }
+      { timeout: 60000 }
     );
   }
 

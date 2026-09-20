@@ -232,27 +232,18 @@ describe('POST /api/conversations/[id]/messages', () => {
 
   // ---- LLM failure fallback ----
 
-  it('returns a placeholder response when LLM fails', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
-    mockConversation.findUnique.mockResolvedValue(makeConversation());
-
-    const userMsg = { id: 'm1', role: 'user', content: 'hi' };
-    const aiMsg = { id: 'm2', role: 'assistant', content: 'placeholder', mood: 'neutral' };
-    mockMessage.create
-      .mockResolvedValueOnce(userMsg)
-      .mockResolvedValueOnce(aiMsg);
-    mockGeneratePersonaResponse.mockRejectedValue(new Error('LLM timeout'));
-
-    const req = createRequest({ content: 'hi' });
-    const res = await POST(req, createParams('c1'));
-    // The route catches LLM errors and uses a placeholder — should still 200
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.userMessage).toBeDefined();
-    expect(data.assistantMessage).toBeDefined();
+  it('returns 502 and removes the pending user message when the model cannot reply (no canned placeholder)', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
+    mockConversation.findUnique.mockResolvedValue({ id: 'c1', userId: 'user-1', status: 'in_progress', persona: {}, scenario: {}, messages: [] });
+    mockMessage.create.mockResolvedValue({ id: 'm1', role: 'user', content: 'hi' });
+    mockMessage.delete = jest.fn().mockResolvedValue({});
+    mockGeneratePersonaResponse.mockRejectedValue(new Error('all providers failed'));
+    const res = await POST(createRequest({ content: 'hi' }), { params: Promise.resolve({ id: 'c1' }) });
+    expect(res.status).toBe(502);
+    expect(mockMessage.delete).toHaveBeenCalledWith({ where: { id: 'm1' } });
+    expect((await res.json()).error).toContain('could not reply');
   });
-
-  // ---- Content trimming ----
 
   it('trims whitespace from message content', async () => {
     mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });

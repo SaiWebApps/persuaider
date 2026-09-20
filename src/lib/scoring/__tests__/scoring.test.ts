@@ -90,3 +90,11 @@ describe('computeDealOutcome', () => {
     expect(o.leftOnTable).toBe(5);
   });
 });
+
+describe('computeDealOutcome: zero range', () => {
+  const fixed: Issue = { ...salary, learner: { target: 115000, reservation: 115000, weight: 100 } };
+  it('scores 100 only when the agreed value respects the learner limit', () => {
+    expect(computeDealOutcome({ reached: true, terms: [{ issue: 'Annual salary', agreed: 116000 }] }, [fixed]).issues[0].learnerCapture).toBe(100);
+    expect(computeDealOutcome({ reached: true, terms: [{ issue: 'Annual salary', agreed: 110000 }] }, [fixed]).issues[0].learnerCapture).toBe(0);
+  });
+});

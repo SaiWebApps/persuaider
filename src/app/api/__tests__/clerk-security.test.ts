@@ -95,7 +95,11 @@ function createWebhookRequest(
 }
 
 function userEvent(type: string, data: Record<string, unknown>) {
-  return { type, data };
+  // Clerk verifies addresses before user.created fires in practice; fixtures default to verified.
+  const addresses = Array.isArray(data.email_addresses)
+    ? (data.email_addresses as Array<Record<string, unknown>>).map((a) => ({ verification: { status: 'verified' }, ...a }))
+    : data.email_addresses;
+  return { type, data: { ...data, email_addresses: addresses } };
 }
 
 function createMessageRequest(

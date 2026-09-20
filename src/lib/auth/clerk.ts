@@ -57,9 +57,16 @@ export async function getAuthSession(): Promise<AuthSession | null> {
 
 async function provisionUser(clerkUserId: string): Promise<{ id: string; role: string } | null> {
   const clerkUser = await currentUser();
-  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? clerkUser?.emailAddresses?.[0]?.emailAddress;
+  const primary = clerkUser?.primaryEmailAddress ?? clerkUser?.emailAddresses?.[0];
+  const email = primary?.emailAddress;
   if (!email) {
     console.error('[auth] Clerk user has no email address; cannot provision', clerkUserId);
+    return null;
+  }
+  // Linking by email is only safe when Clerk has verified that address;
+  // otherwise anyone could claim a pre-seeded (possibly admin) row.
+  if (primary?.verification?.status !== 'verified') {
+    console.error('[auth] refusing to provision: primary email not verified', email);
     return null;
   }
 
@@ -83,18 +90,34 @@ async function provisionUser(clerkUserId: string): Promise<{ id: string; role: s
     [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(' ') ||
     email.split('@')[0];
 
-  const created = await prisma.user.create({
-    data: {
-      clerkId: clerkUserId,
-      email,
-      username: await uniqueUsername(baseName),
-      role: 'user',
-      emailVerified: new Date(),
-    },
-    select: { id: true, role: true },
-  });
-  console.info('[auth] provisioned new user from Clerk', email);
-  return created;
+  try {
+    const created = await prisma.user.create({
+      data: {
+        clerkId: clerkUserId,
+        email,
+        username: await uniqueUsername(baseName),
+        role: 'user',
+        emailVerified: new Date(),
+      },
+      select: { id: true, role: true },
+    });
+    console.info('[auth] provisioned new user from Clerk', email);
+    return created;
+  } catch (error) {
+    // Two first requests raced; the other one won. Re-read instead of failing.
+    if ((error as { code?: string })?.code === 'P2002') {
+      const byClerk = await prisma.user.findUnique({ where: { clerkId: clerkUserId }, select: { id: true, role: true } });
+      if (byClerk) return byClerk;
+      // The collision may have been on username; the row for this email exists now or the
+      // other request will link it. One more attempt through the linking path.
+      const byEmail = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, clerkId: true } });
+      if (byEmail && (!byEmail.clerkId || byEmail.clerkId === clerkUserId)) {
+        return prisma.user.update({ where: { id: byEmail.id }, data: { clerkId: clerkUserId }, select: { id: true, role: true } });
+      }
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function uniqueUsername(base: string): Promise<string> {
