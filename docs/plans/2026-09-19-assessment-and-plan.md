@@ -331,3 +331,43 @@ daily token budget on every tier; Free 3 sessions, Pro $19 with 20 simulations, 
 $79 for 30 days; success gate before engine work is ten strangers complete a session and five
 say the opponent felt real. No humans have used the product yet. No instructor pilot.
 First slice: CI plus sign-up → dashboard → admin reachable.
+
+---
+
+## 11. Independent review, 2026-09-20 (after slices 1–5; slice 6 in flight)
+
+Two reviewers: alignment (vision, plan, rules) and adversarial code. Fixed inside slice 6:
+webhook overwrote DB role on update; fresh clone never got a schema; fork dropped Issues;
+non-numeric framework scores became a fabricated 50; unparseable deal extraction was shown as
+"No deal"; `.env.example` was git-ignored; two e2e tests counted messages after clicking send.
+
+Open findings, to be worked as the next slice ("review fixes") unless marked as a decision:
+
+- Link only verified Clerk emails when provisioning or via webhook.
+- Partial unique index: one in-progress conversation per user × persona; catch P2002 and re-read.
+- Concurrent first sign-in: catch P2002 in provisioning and re-read by clerkId.
+- Transcript injection: wrap messages in role tags for the evaluator and deal extractor.
+- Issues codec: enforce target/reservation direction per side; zero range scores 100 only when
+  inside the limit; reject duplicate issue names.
+- Persona read routes must check membership and select public fields only.
+- CI must run `migrate deploy` plus a schema diff, not only `db push`.
+- Reattempt no longer clones a completed conversation; glossary updated to match.
+- Probe checker misses figures before the verb, "$130k", counter/propose/authorize, and any
+  sentence with a negation elsewhere in it.
+- Integration tests on real Postgres per touched route: rule exists, no slice honoured it.
+- Playwright runs against a local dev server, not the preview, and not in CI.
+- Old-scale openness rows (1–10) silently read as undefined.
+- Acceptance steps drifted from the tests in slices 2, 3, 4, 5 (resume, older summary, real-case
+  counter, deal path actually reached).
+- Phase 1 items skipped without being listed as Blocked: side selection, generate modal, win
+  condition enforcement.
+
+Decisions for the owner:
+1. Ledger: the plan and ADR assumed a per-turn validated deal ledger fed back into the prompt;
+   slices 4–5 shipped post-hoc extraction instead. Keep post-hoc for now and add the per-turn
+   ledger when the engine needs it, or build the ledger before the engine as the plan said?
+2. Hidden limit reveal: the summary reveals the counterpart's walk-away after every session, so
+   repeat plays on the same scenario are played with the answer known. Reveal always, reveal only
+   after N attempts, or never reveal (show capture only)?
+3. Playwright in CI against the preview needs repo secrets (Clerk test keys, a Neon branch URL,
+   one LLM key) and spends a few cents per run. Approve?
