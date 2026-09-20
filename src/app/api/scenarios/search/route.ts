@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { readTags } from '@/lib/codec/scenario';
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
     userRole: s.userRole,
     aiRole: s.aiRole,
     joinCode: s.joinCode,
-    tags: JSON.parse(s.tags || '[]'),
+    tags: readTags(s.tags),
     inspirationCount: s.inspirationCount,
     isRestricted: !!s.accessCode,
     creatorUsername: s.createdBy?.username || null,

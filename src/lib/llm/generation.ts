@@ -217,7 +217,9 @@ export async function generateScenario(description: string): Promise<GeneratedSc
   const chain = LLMProviderFactory.getProviderChain();
 
   const response = await chain.generateResponse(
-    [{ role: 'system' as const, content: prompt }],
+    // Sent as the user turn: Anthropic requires at least one non-system message,
+      // and a system-only call is rejected with a 400.
+      [{ role: 'user' as const, content: prompt }],
     { temperature: 0.7, maxTokens: 4000 }
   );
 
@@ -258,7 +260,9 @@ export async function generateScenarioFromDocument(
   const chain = LLMProviderFactory.getProviderChain();
 
   const response = await chain.generateResponse(
-    [{ role: 'system' as const, content: prompt }],
+    // Sent as the user turn: Anthropic requires at least one non-system message,
+      // and a system-only call is rejected with a 400.
+      [{ role: 'user' as const, content: prompt }],
     { temperature: 0.7, maxTokens: 4000 }
   );
 

@@ -1,4 +1,5 @@
 import { MOOD_PROMPT_INSTRUCTION } from './mood';
+import { readCharacteristics, readEvaluationCriteria } from '@/lib/codec/scenario';
 
 interface Persona {
   name: string;
@@ -16,27 +17,15 @@ interface Scenario {
 }
 
 export function buildPersonaPrompt(persona: Persona, scenario: Scenario): string {
-  let characteristics: { openness?: number; concerns?: string[]; personality?: string[]; roleBehavior?: string } = {};
-  if (persona.characteristics) {
-    try {
-      characteristics = JSON.parse(persona.characteristics);
-    } catch {
-      characteristics = {};
-    }
-  }
+  const characteristics = readCharacteristics(persona.characteristics);
 
   const concerns = characteristics.concerns || [];
   const personality = characteristics.personality || [];
   const roleBehavior = characteristics.roleBehavior || '';
 
-  let evaluationCriteria: { frameworks?: Array<{ name: string; description: string; elements: Array<{ name: string; description: string }> }>; scoringInstructions?: string } = {};
-  try {
-    evaluationCriteria = JSON.parse(scenario.evaluationCriteria);
-  } catch {
-    evaluationCriteria = {};
-  }
+  const evaluationCriteria = readEvaluationCriteria(scenario.evaluationCriteria);
 
-  const frameworksList = (evaluationCriteria.frameworks || [])
+  const frameworksList = evaluationCriteria.frameworks
     .map(f => `- ${f.name}: ${f.description}`)
     .join('\n');
 
@@ -57,7 +46,7 @@ ${personality.length > 0 ? personality.map((p: string) => `- ${p}`).join('\n') :
 ${roleBehavior ? `Role Behavior: ${roleBehavior}` : ''}
 
 The trainee will be evaluated on:
-${frameworksList || '- General negotiation effectiveness'}
+${frameworksList}
 
 ${evaluationCriteria.scoringInstructions || ''}
 

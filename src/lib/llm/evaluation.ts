@@ -1,5 +1,6 @@
 import { LLMProviderFactory } from './providers/factory';
 import type { LLMFeedback, WinningArgument } from '@/types';
+import { readEvaluationCriteria } from '@/lib/codec/scenario';
 
 interface EvaluationMessage {
   role: string;
@@ -36,14 +37,8 @@ export function buildEvaluationPrompt(
   persona: EvaluationPersona,
   scenario: EvaluationScenario
 ): string {
-  let criteria: { frameworks?: Array<{ name: string; description: string; elements: Array<{ name: string; description: string }> }>; scoringInstructions?: string } = {};
-  try {
-    criteria = JSON.parse(evaluationCriteria);
-  } catch {
-    criteria = {};
-  }
-
-  const frameworks = criteria.frameworks || [];
+  const criteria = readEvaluationCriteria(evaluationCriteria);
+  const frameworks = criteria.frameworks;
   const frameworksList = frameworks
     .map(f => {
       const elements = f.elements.map(e => `    - ${e.name}: ${e.description}`).join('\n');
@@ -66,7 +61,7 @@ Trainee's role: ${scenario.userRole}
 AI counterpart: ${persona.name} (${persona.roleType})
 
 Evaluation Frameworks:
-${frameworksList || '  - General negotiation effectiveness'}
+${frameworksList}
 
 ${criteria.scoringInstructions || 'Evaluate the trainee on each framework. A score of 70+ indicates competence; 85+ indicates excellence.'}
 
@@ -216,7 +211,9 @@ export async function evaluateConversation(
 
     const chain = LLMProviderFactory.getProviderChain();
     const response = await chain.generateResponse(
-      [{ role: 'system' as const, content: prompt }],
+      // Sent as the user turn: Anthropic requires at least one non-system message,
+      // and a system-only call is rejected with a 400.
+      [{ role: 'user' as const, content: prompt }],
       { temperature: 0.3, maxTokens: 2000 }
     );
 

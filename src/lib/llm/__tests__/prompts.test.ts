@@ -95,13 +95,15 @@ describe('buildPersonaPrompt', () => {
   it('handles invalid JSON in evaluationCriteria', () => {
     const scenario = { ...baseScenario, evaluationCriteria: 'not json' };
     const prompt = buildPersonaPrompt(basePersona, scenario);
-    expect(prompt).toContain('General negotiation effectiveness');
+    expect(prompt).toContain('Preparation');
+    expect(prompt).toContain('Deal-making');
   });
 
   it('handles empty evaluationCriteria JSON', () => {
     const scenario = { ...baseScenario, evaluationCriteria: '{}' };
     const prompt = buildPersonaPrompt(basePersona, scenario);
-    expect(prompt).toContain('General negotiation effectiveness');
+    expect(prompt).toContain('Preparation');
+    expect(prompt).toContain('Deal-making');
   });
 
   it('includes conversation guidelines', () => {

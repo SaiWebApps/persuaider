@@ -91,7 +91,8 @@ describe('buildEvaluationPrompt', () => {
 
   it('handles empty evaluationCriteria gracefully', () => {
     const prompt = buildEvaluationPrompt(mockMessages, '{}', mockPersona, mockScenario);
-    expect(prompt).toContain('General negotiation effectiveness');
+    expect(prompt).toContain('Preparation');
+    expect(prompt).toContain('Deal-making');
   });
 
   it('handles invalid JSON evaluationCriteria', () => {

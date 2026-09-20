@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { ValidationError } from '@/types';
+import { parseCharacteristicsInput, serialize } from '@/lib/codec/scenario';
 
 // GET /api/personas/[id] - Get single persona
 export async function GET(
@@ -94,62 +96,15 @@ export async function PATCH(
 
     // Validate characteristics
     if (body.characteristics !== undefined) {
-      if (body.characteristics !== null) {
-        if (typeof body.characteristics !== 'object' || Array.isArray(body.characteristics)) {
-          return NextResponse.json({ error: 'characteristics must be an object' }, { status: 400 });
-        }
-
-        const chars = body.characteristics;
-
-        // Validate openness
-        if (chars.openness !== undefined) {
-          if (typeof chars.openness !== 'number' || isNaN(chars.openness)) {
-            return NextResponse.json({ error: 'openness must be a number between 0 and 1' }, { status: 400 });
-          }
-          if (chars.openness < 0 || chars.openness > 1) {
-            return NextResponse.json({ error: 'openness must be between 0 and 1' }, { status: 400 });
-          }
-        }
-
-        // Validate concerns
-        if (chars.concerns !== undefined) {
-          if (!Array.isArray(chars.concerns)) {
-            return NextResponse.json({ error: 'concerns must be an array' }, { status: 400 });
-          }
-          if (chars.concerns.length > 20) {
-            return NextResponse.json({ error: 'concerns cannot exceed 20 items' }, { status: 400 });
-          }
-          if (!chars.concerns.every((c: unknown) => typeof c === 'string')) {
-            return NextResponse.json({ error: 'concerns must be an array of strings' }, { status: 400 });
-          }
-        }
-
-        // Validate personality
-        if (chars.personality !== undefined) {
-          if (!Array.isArray(chars.personality)) {
-            return NextResponse.json({ error: 'personality must be an array' }, { status: 400 });
-          }
-          if (chars.personality.length > 10) {
-            return NextResponse.json({ error: 'personality cannot exceed 10 items' }, { status: 400 });
-          }
-          if (!chars.personality.every((p: unknown) => typeof p === 'string')) {
-            return NextResponse.json({ error: 'personality must be an array of strings' }, { status: 400 });
-          }
-        }
-
-        // Validate roleBehavior
-        if (chars.roleBehavior !== undefined) {
-          if (typeof chars.roleBehavior !== 'string') {
-            return NextResponse.json({ error: 'roleBehavior must be a string' }, { status: 400 });
-          }
-          if (chars.roleBehavior.length > 1000) {
-            return NextResponse.json({ error: 'roleBehavior cannot exceed 1000 characters' }, { status: 400 });
-          }
-        }
-
-        updates.characteristics = JSON.stringify(chars);
-      } else {
+      if (body.characteristics === null) {
         updates.characteristics = null;
+      } else {
+        try {
+          updates.characteristics = serialize(parseCharacteristicsInput(body.characteristics));
+        } catch (error) {
+          if (error instanceof ValidationError) return NextResponse.json({ error: error.message }, { status: 400 });
+          throw error;
+        }
       }
     }
 
