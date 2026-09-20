@@ -79,26 +79,44 @@ export async function POST(
   const stream = new ReadableStream({
     async start(controller) {
       let fullContent = '';
+      let closed = false;
+      const send = (payload: unknown) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        } catch {
+          closed = true; // client went away
+        }
+      };
+      let billed = false;
+      const meter = { userId: session.user.id, purpose: 'turn_stream' as const, conversationId: id };
+      const billEstimate = async (provider: string) => {
+        if (billed || !fullContent) return;
+        billed = true;
+        const modelName = LLM_MODELS[provider as keyof typeof LLM_MODELS] ?? 'unknown';
+        await recordLlmCall(meter, estimatedResponse(contextMessages, fullContent, provider, modelName), { estimated: true });
+      };
+      let providerName = 'unknown';
 
       try {
         const chain = LLMProviderFactory.getProviderChain();
         const streamingProvider = chain.getPrimaryStreamingProvider();
 
-        const meter = { userId: session.user.id, purpose: 'turn_stream' as const, conversationId: id };
         if (streamingProvider && streamingProvider.generateStreamingResponse) {
+          providerName = streamingProvider.name;
           const gen = streamingProvider.generateStreamingResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
           for await (const chunk of gen) {
             fullContent += chunk;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`));
+            send({ type: 'chunk', text: chunk });
           }
           // Streams do not report token counts; record an estimate so the budget still moves.
-          const modelName = LLM_MODELS[streamingProvider.name as keyof typeof LLM_MODELS] ?? 'unknown';
-          await recordLlmCall(meter, estimatedResponse(contextMessages, fullContent, streamingProvider.name, modelName), { estimated: true });
+          await billEstimate(providerName);
         } else {
           // Fallback to non-streaming
           const response = await chain.generateResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
           fullContent = response.content;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: fullContent })}\n\n`));
+          send({ type: 'chunk', text: fullContent });
+          billed = true;
           await recordLlmCall(meter, response);
         }
 
@@ -116,21 +134,23 @@ export async function POST(
         });
 
         // Send done event
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+        send({
           type: 'done',
           messageId: assistantMessage.id,
           mood: parsed.mood,
           content: parsed.content,
           userMessageId: userMessage.id,
-        })}\n\n`));
+        });
       } catch (error) {
         console.error('Streaming error:', error);
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-          type: 'error',
-          message: 'Failed to generate response',
-        })}\n\n`));
+        // Tokens were consumed even if the client disconnected mid-stream: bill what streamed.
+        await billEstimate(providerName);
+        send({ type: 'error', message: 'Failed to generate response' });
       } finally {
-        controller.close();
+        if (!closed) {
+          closed = true;
+          try { controller.close(); } catch { /* already closed */ }
+        }
       }
     },
   });

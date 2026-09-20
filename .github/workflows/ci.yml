@@ -58,9 +58,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check secrets
         id: secrets
+        env:
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork == true }}
         run: |
           if [ -z "$CLERK_SECRET_KEY" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"; echo "::warning::e2e skipped: CLERK_SECRET_KEY / ANTHROPIC_API_KEY secrets not set"
+            if [ "$IS_FORK" = "true" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"; echo "::warning::e2e skipped on a fork PR (secrets unavailable)"
+            else
+              echo "::error::e2e cannot run: CLERK_SECRET_KEY / ANTHROPIC_API_KEY repository secrets are missing"; exit 1
+            fi
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi

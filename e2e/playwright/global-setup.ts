@@ -77,6 +77,8 @@ export default async function globalSetup() {
   try {
     // Scenarios created by earlier E2E runs (all titled "E2E …") are removed so counts stay predictable.
     const removed = await db.scenario.deleteMany({ where: { title: { startsWith: 'E2E ' } } });
+    // Each run starts with a clean daily budget for the test users.
+    await db.llmCall.deleteMany({ where: { user: { email: { in: ['demo@persuaider.com', 'admin@persuaider.dev'] } } } });
     if (removed.count) console.log(`    removed ${removed.count} scenario(s) left by earlier runs`);
     for (const email of ['demo@persuaider.com', 'admin@persuaider.dev']) {
       const list = await clerkClient.users.getUserList({ emailAddress: [email] });

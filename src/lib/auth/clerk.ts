@@ -106,7 +106,15 @@ async function provisionUser(clerkUserId: string): Promise<{ id: string; role: s
   } catch (error) {
     // Two first requests raced; the other one won. Re-read instead of failing.
     if ((error as { code?: string })?.code === 'P2002') {
-      return prisma.user.findUnique({ where: { clerkId: clerkUserId }, select: { id: true, role: true } });
+      const byClerk = await prisma.user.findUnique({ where: { clerkId: clerkUserId }, select: { id: true, role: true } });
+      if (byClerk) return byClerk;
+      // The collision may have been on username; the row for this email exists now or the
+      // other request will link it. One more attempt through the linking path.
+      const byEmail = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, clerkId: true } });
+      if (byEmail && (!byEmail.clerkId || byEmail.clerkId === clerkUserId)) {
+        return prisma.user.update({ where: { id: byEmail.id }, data: { clerkId: clerkUserId }, select: { id: true, role: true } });
+      }
+      return null;
     }
     throw error;
   }

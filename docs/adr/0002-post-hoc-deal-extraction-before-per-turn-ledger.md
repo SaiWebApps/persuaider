@@ -19,5 +19,7 @@ when the simulation engine needs structured state on every node, not before.
   rules in the prompt.
 - The extraction can be wrong or unparseable; unparseable is stored as unknown, never as
   "no deal". Transcript turns are tagged by speaker so a learner cannot forge a counterpart line.
-- The engine slice must add the ledger and carry it per side through every rollout (plan
-  Phase 3, task 3b).
+- Capability 3 needs utility per node (grading a takeover against the best sibling); post-hoc
+  extraction yields one number per finished transcript, so `rank(tree)` and per-node utility
+  (Phase 3 tasks 1–2) have nothing to compute from. The per-turn ledger is therefore the first
+  engine task, before the tree schema, and is carried per side through every rollout.

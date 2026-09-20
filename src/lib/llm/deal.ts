@@ -24,9 +24,14 @@ const dealStateSchema = z.object({
     .catch([]),
 });
 
+/** Content can never close or open a <message> tag: angle brackets are escaped. */
+export function escapeTags(text: string): string {
+  return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export function buildDealPrompt(messages: Array<{ role: string; content: string }>, issues: Issue[], personaName: string): string {
   const transcript = messages
-    .map((m) => `<message speaker="${m.role === 'user' ? 'TRAINEE' : 'COUNTERPART'}">\n${m.content}\n</message>`)
+    .map((m) => `<message speaker="${m.role === 'user' ? 'TRAINEE' : 'COUNTERPART'}">\n${escapeTags(m.content)}\n</message>`)
     .join('\n');
   const issueList = issues.map((i) => `- "${i.name}"${i.unit ? ` (in ${i.unit})` : ''}`).join('\n');
   return `You are reading a negotiation transcript between TRAINEE and ${personaName} (the COUNTERPART).
@@ -74,10 +79,17 @@ export async function extractDealState(
 ): Promise<DealState | null> {
   if (issues.length === 0 || !messages.some((m) => m.role === 'user')) return null;
   const chain = LLMProviderFactory.getProviderChain();
-  const response = await chain.generateResponse([{ role: 'user', content: buildDealPrompt(messages, issues, personaName) }], {
-    temperature: 0,
-    maxTokens: 600,
-  });
-  if (meter) await recordLlmCall(meter, response);
-  return parseDealResponse(response.content);
+  const ask = async () => {
+    const response = await chain.generateResponse([{ role: 'user', content: buildDealPrompt(messages, issues, personaName) }], {
+      temperature: 0,
+      maxTokens: 600,
+    });
+    if (meter) await recordLlmCall(meter, response);
+    return parseDealResponse(response.content);
+  };
+  const first = await ask();
+  if (first) return first;
+  // Unparseable once is usually a truncated or chatty reply; ask once more before giving up.
+  console.warn('[deal] unparseable extraction reply; retrying once');
+  return ask();
 }

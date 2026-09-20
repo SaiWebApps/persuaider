@@ -26,13 +26,23 @@ test('usage shows on the profile and an admin-set budget stops the chat', async 
     await demoPage.fill('[data-testid="chat-input"]', 'What worries you most about trying AI?');
     await demoPage.click('[data-testid="send-button"]');
     await expect(demoPage.locator('[data-testid="assistant-message"]')).toHaveCount(2, { timeout: 45000 });
+    // Let the stream finish (text stops growing) so the call is recorded before we leave.
+    const reply = demoPage.locator('[data-testid="assistant-message"]').last();
+    let text = '';
+    for (let i = 0; i < 30; i++) {
+      const now = (await reply.textContent()) ?? '';
+      if (now === text && now.length > 20) break;
+      text = now;
+      await demoPage.waitForTimeout(500);
+    }
+    await demoPage.waitForTimeout(1000);
 
     await demoPage.goto('/profile');
     const usage = demoPage.locator('[data-testid="ai-usage"]');
     await expect(usage).toBeVisible();
-    const text = (await usage.textContent()) ?? '';
-    const spent = Number(/\$(\d+\.\d+) of/.exec(text)?.[1] ?? '0');
-    const calls = Number(/\((\d+) calls?\)/.exec(text)?.[1] ?? '0');
+    const usageText = (await usage.textContent()) ?? '';
+    const spent = Number(/\$(\d+\.\d+) of/.exec(usageText)?.[1] ?? '0');
+    const calls = Number(/\((\d+) calls?\)/.exec(usageText)?.[1] ?? '0');
     expect(calls).toBeGreaterThanOrEqual(1);
     expect(spent).toBeGreaterThan(0);
 
