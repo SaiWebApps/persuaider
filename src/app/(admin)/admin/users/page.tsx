@@ -11,6 +11,7 @@ export default async function AdminUsersPage() {
       email: true,
       username: true,
       role: true,
+      dailyBudgetUsd: true,
       createdAt: true,
       _count: { select: { conversations: true, scenarioMemberships: true } },
     },

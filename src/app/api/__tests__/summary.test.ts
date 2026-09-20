@@ -6,6 +6,17 @@
  * Integration tests for /api/conversations/[id]/summary route.
  */
 
+// Budget metering is tested in src/lib/llm/__tests__/usage.test.ts; routes get a permissive fake.
+jest.mock('@/lib/llm/usage', () => ({
+  assertWithinBudget: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  recordLlmCall: jest.fn().mockResolvedValue(undefined),
+  getDailyUsage: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  estimatedResponse: (_m: unknown, content: string, provider: string, model: string) => ({
+    content, provider, model, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  }),
+}));
+
+
 const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuthFn(),
@@ -148,7 +159,8 @@ describe('POST /api/conversations/[id]/summary', () => {
       ]),
       expect.objectContaining({ name: 'Alex' }),
       expect.objectContaining({ title: 'Salary Negotiation' }),
-      undefined // no deal outcome: the scenario has no issues
+      undefined, // no deal outcome: the scenario has no issues
+      expect.objectContaining({ userId: 'user-1', purpose: 'evaluation', conversationId: 'c1' })
     );
   });
 
@@ -233,13 +245,13 @@ describe('POST /api/conversations/[id]/summary', () => {
 
     await POST(new NextRequest('http://localhost:3000/api/conversations/c1/summary'), createParams('c1'));
 
-    expect(mockExtractDealState).toHaveBeenCalledWith(expect.any(Array), expect.arrayContaining([expect.objectContaining({ name: 'Annual salary' })]), 'Alex');
+    expect(mockExtractDealState).toHaveBeenCalledWith(expect.any(Array), expect.arrayContaining([expect.objectContaining({ name: 'Annual salary' })]), 'Alex', expect.objectContaining({ purpose: 'deal' }));
     const data = mockSummary.create.mock.calls[0][0].data;
     const deal = JSON.parse(data.deal);
     expect(deal.reached).toBe(true);
     expect(deal.issues[0].learnerCapture).toBe(20);
     // The evaluator receives the computed outcome so its feedback can cite the numbers.
-    expect(mockEvaluateConversation).toHaveBeenCalledWith(expect.any(Array), expect.anything(), expect.anything(), expect.objectContaining({ reached: true }));
+    expect(mockEvaluateConversation).toHaveBeenCalledWith(expect.any(Array), expect.anything(), expect.anything(), expect.objectContaining({ reached: true }), expect.objectContaining({ purpose: 'evaluation' }));
   });
 
   it('skips deal extraction when the scenario has no issues', async () => {

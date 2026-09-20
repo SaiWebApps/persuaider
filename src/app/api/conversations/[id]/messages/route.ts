@@ -5,6 +5,8 @@ import { generatePersonaResponse } from '@/lib/llm';
 import { parseMoodResponse } from '@/lib/llm/mood';
 import { DEFAULT_MOOD } from '@/types';
 import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
+import { assertWithinBudget } from '@/lib/llm/usage';
+import { BudgetExceededError } from '@/types';
 
 // POST /api/conversations/[id]/messages - Add message to conversation
 export async function POST(
@@ -85,6 +87,15 @@ export async function POST(
       );
     }
 
+    try {
+      await assertWithinBudget(session.user.id);
+    } catch (error) {
+      if (error instanceof BudgetExceededError) {
+        return NextResponse.json({ error: error.message, code: 'budget_exceeded' }, { status: 429 });
+      }
+      throw error;
+    }
+
     // Create user message
     const userMessage = await prisma.message.create({
       data: {
@@ -111,11 +122,9 @@ export async function POST(
     let aiMood: string = DEFAULT_MOOD;
 
     try {
-      const llmResponse = await generatePersonaResponse(
-        conversation.persona,
-        allMessages,
-        conversation.scenario
-      );
+      const llmResponse = await generatePersonaResponse(conversation.persona, allMessages, conversation.scenario, {
+        meter: { userId: session.user.id, purpose: 'turn', conversationId: id },
+      });
 
       const parsed = parseMoodResponse(llmResponse.content);
       aiResponse = parsed.content;

@@ -28,7 +28,7 @@ uses the word. Terms marked **(open)** are proposed and awaiting a decision; see
 - **Framework** (settled) — A named evaluation lens with weighted criteria (e.g. CLEAR, AIDA).
 - **Win condition** (settled, unenforced) — A stored rule for when a Conversation counts as won
   (manual, max messages, score threshold). Nothing enforces it at runtime today.
-- **Reattempt** (settled, no UI) — Cloning a completed Conversation to try again.
+- **Reattempt** (settled, no UI) — Starting a fresh Conversation with the same Persona after a completed one; resumes an in-progress one if it exists.
 - **Fork** (settled) — Copying a public Scenario into your own library.
 - **Join code** (settled) — A short code that adds a Learner to a Scenario.
 

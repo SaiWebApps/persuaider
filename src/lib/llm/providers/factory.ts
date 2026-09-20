@@ -15,6 +15,16 @@ const PROVIDER_ORDER = ['anthropic', 'gemini', 'openai'] as const;
 export class LLMProviderFactory {
   private static providers: Map<string, LLMProvider> = new Map();
   private static providerChain: LLMProviderChain | null = null;
+  private static override: LLMProvider[] | null = null;
+
+  /**
+   * Replace the real providers with scripted ones (tests, replay). Pass null
+   * to restore. The override is honoured by getProviderChain only.
+   */
+  static useProviders(providers: LLMProvider[] | null): void {
+    this.override = providers;
+    this.providerChain = null;
+  }
 
   /**
    * Get a single provider instance by name
@@ -103,6 +113,9 @@ export class LLMProviderFactory {
    * ```
    */
   static getProviderChain(options?: ChainOptions): LLMProviderChain {
+    if (this.override) {
+      return new LLMProviderChain(this.override, { ...DEFAULT_FALLBACK_CONFIG, providerOrder: this.override.map((p) => p.name), maxRetries: 1, initialDelayMs: 1 }, options);
+    }
     // Get available providers based on the hardcoded order
     const availableProviders: LLMProvider[] = [];
     const unavailableProviders: string[] = [];
@@ -168,5 +181,6 @@ export class LLMProviderFactory {
   static clearCache() {
     this.providers.clear();
     this.providerChain = null;
+    this.override = null;
   }
 }

@@ -8,6 +8,17 @@
  * when called with missing, invalid, or insufficient auth.
  */
 
+// Budget metering is tested in src/lib/llm/__tests__/usage.test.ts; routes get a permissive fake.
+jest.mock('@/lib/llm/usage', () => ({
+  assertWithinBudget: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  recordLlmCall: jest.fn().mockResolvedValue(undefined),
+  getDailyUsage: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  estimatedResponse: (_m: unknown, content: string, provider: string, model: string) => ({
+    content, provider, model, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  }),
+}));
+
+
 const mockRequireAdmin = jest.fn();
 jest.mock('@/lib/auth/admin', () => ({
   requireAdmin: () => mockRequireAdmin(),

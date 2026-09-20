@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db/client';
 import { ProfileClient } from './ProfileClient';
+import { getDailyUsage } from '@/lib/llm/usage';
 
 // Reads per-request user data from the database; opt out of static prerendering.
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,8 @@ export default async function ProfilePage() {
     ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
     : 0;
 
+  const usage = await getDailyUsage(session.user.id);
+
   const completionRate = totalConversations > 0
     ? Math.round((completedConversations / totalConversations) * 100)
     : 0;
@@ -59,6 +62,7 @@ export default async function ProfilePage() {
         averageScore,
         completionRate,
       }}
+      usage={usage}
     />
   );
 }

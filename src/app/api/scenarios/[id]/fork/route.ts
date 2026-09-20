@@ -73,6 +73,7 @@ export async function POST(
       winCondition: source.winCondition,
       tags: source.tags,
       contextNotes: source.contextNotes,
+      issues: source.issues,
       forkedFromId: source.id,
       visibility: 'public',
       status: 'published',

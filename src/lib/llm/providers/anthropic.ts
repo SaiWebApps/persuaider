@@ -3,6 +3,11 @@ import type { LLMProvider, LLMMessage, LLMResponse, LLMOptions } from '../types'
 import { classifyAnthropicError } from '../errors';
 import { LLM_MODELS } from '../models';
 
+/** Claude 5-generation models reject the `temperature` parameter outright. */
+export function supportsTemperature(model: string): boolean {
+  return !/^claude-(sonnet|opus|haiku|fable|mythos)-5\b/.test(model);
+}
+
 export class AnthropicProvider implements LLMProvider {
   name = 'anthropic';
   private client: Anthropic;
@@ -16,10 +21,11 @@ export class AnthropicProvider implements LLMProvider {
       const systemMessage = messages.find(m => m.role === 'system');
       const conversationMessages = messages.filter(m => m.role !== 'system');
 
+      const model = options?.model || LLM_MODELS.anthropic;
       const response = await this.client.messages.create({
-        model: options?.model || LLM_MODELS.anthropic,
+        model,
         max_tokens: options?.maxTokens || 500,
-        temperature: options?.temperature ?? 0.8,
+        ...(supportsTemperature(model) ? { temperature: options?.temperature ?? 0.8 } : {}),
         system: systemMessage?.content,
         messages: conversationMessages.map((msg) => ({
           role: msg.role === 'assistant' ? 'assistant' : 'user',
@@ -32,6 +38,7 @@ export class AnthropicProvider implements LLMProvider {
       return {
         content,
         provider: this.name,
+        model: response.model,
         usage: {
           promptTokens: response.usage.input_tokens,
           completionTokens: response.usage.output_tokens,
@@ -48,10 +55,11 @@ export class AnthropicProvider implements LLMProvider {
       const systemMessage = messages.find(m => m.role === 'system');
       const conversationMessages = messages.filter(m => m.role !== 'system');
 
+      const model = options?.model || LLM_MODELS.anthropic;
       const stream = this.client.messages.stream({
-        model: options?.model || LLM_MODELS.anthropic,
+        model,
         max_tokens: options?.maxTokens || 500,
-        temperature: options?.temperature ?? 0.8,
+        ...(supportsTemperature(model) ? { temperature: options?.temperature ?? 0.8 } : {}),
         system: systemMessage?.content,
         messages: conversationMessages.map((msg) => ({
           role: msg.role === 'assistant' ? 'assistant' : 'user',

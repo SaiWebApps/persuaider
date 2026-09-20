@@ -14,6 +14,7 @@ export async function GET() {
       email: true,
       username: true,
       role: true,
+      dailyBudgetUsd: true,
       createdAt: true,
     },
     orderBy: { createdAt: 'desc' },

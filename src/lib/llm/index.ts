@@ -3,6 +3,7 @@ import { buildConversationContext } from './prompts';
 import type { LLMResponse, LLMOptions } from './types';
 import { LLMError, LLMErrorType } from './errors';
 import type { ChainOptions } from './providers/chain';
+import { recordLlmCall, type Meter } from './usage';
 
 import type { PersonaPromptInput as Persona, ScenarioPromptInput as Scenario } from './prompts';
 
@@ -14,6 +15,8 @@ interface Message {
 export interface GenerateOptions extends LLMOptions {
   useFallback?: boolean;
   onChainEvent?: ChainOptions['onEvent'];
+  /** When present, the call is recorded against this user's daily budget. */
+  meter?: Meter;
 }
 
 export async function generatePersonaResponse(
@@ -22,20 +25,16 @@ export async function generatePersonaResponse(
   scenario?: Scenario,
   options?: GenerateOptions
 ): Promise<LLMResponse> {
-  const { useFallback = true, onChainEvent, ...llmOptions } = options || {};
+  const { useFallback = true, onChainEvent, meter, ...llmOptions } = options || {};
 
   const contextMessages = buildConversationContext(persona, messages, scenario);
 
   try {
-    if (useFallback) {
-      const chain = LLMProviderFactory.getProviderChain(
-        onChainEvent ? { onEvent: onChainEvent } : undefined
-      );
-      return await chain.generateResponse(contextMessages, llmOptions);
-    } else {
-      const provider = LLMProviderFactory.getProvider('anthropic');
-      return await provider.generateResponse(contextMessages, llmOptions);
-    }
+    const response = useFallback
+      ? await LLMProviderFactory.getProviderChain(onChainEvent ? { onEvent: onChainEvent } : undefined).generateResponse(contextMessages, llmOptions)
+      : await LLMProviderFactory.getProvider('anthropic').generateResponse(contextMessages, llmOptions);
+    if (meter) await recordLlmCall(meter, response);
+    return response;
   } catch (error) {
     if (error instanceof LLMError) {
       throw error;

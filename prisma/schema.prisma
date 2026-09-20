@@ -16,6 +16,7 @@ model User {
   passwordHash        String?
   emailVerified       DateTime?
   role                String         @default("user")
+  dailyBudgetUsd      Float?         // null = platform default for the role
   provider            String?
   providerAccountId   String?
   createdAt           DateTime       @default(now())
@@ -25,6 +26,7 @@ model User {
   conversations       Conversation[]
   scenarioMemberships UserScenario[]
   passwordResetTokens PasswordResetToken[]
+  llmCalls            LlmCall[]
   emailVerificationTokens EmailVerificationToken[]
 
   @@map("users")
@@ -216,4 +218,23 @@ model EmailVerificationToken {
 
   @@map("email_verification_tokens")
   @@index([userId])
+}
+
+model LlmCall {
+  id               String   @id @default(cuid())
+  userId           String
+  conversationId   String?
+  purpose          String   // "turn" | "turn_stream" | "evaluation" | "deal" | "generation"
+  provider         String
+  model            String
+  promptTokens     Int
+  completionTokens Int
+  costUsd          Float
+  estimated        Boolean  @default(false) // true when tokens were estimated (streaming)
+  createdAt        DateTime @default(now())
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("llm_calls")
+  @@index([userId, createdAt])
 }

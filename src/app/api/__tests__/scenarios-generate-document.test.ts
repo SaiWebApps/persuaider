@@ -6,6 +6,17 @@
  * Tests for POST /api/scenarios/generate-from-document
  */
 
+// Budget metering is tested in src/lib/llm/__tests__/usage.test.ts; routes get a permissive fake.
+jest.mock('@/lib/llm/usage', () => ({
+  assertWithinBudget: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  recordLlmCall: jest.fn().mockResolvedValue(undefined),
+  getDailyUsage: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  estimatedResponse: (_m: unknown, content: string, provider: string, model: string) => ({
+    content, provider, model, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  }),
+}));
+
+
 const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuthFn(),
@@ -122,7 +133,8 @@ describe('POST /api/scenarios/generate-from-document', () => {
     expect(mockGenerateScenarioFromDocument).toHaveBeenCalledWith(
       expect.any(Buffer),
       'application/pdf',
-      'contract.pdf'
+      'contract.pdf',
+      expect.objectContaining({ purpose: 'generation' })
     );
   });
 

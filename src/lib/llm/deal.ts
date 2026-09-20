@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { LLMProviderFactory } from './providers/factory';
 import type { Issue } from '@/lib/codec/scenario';
 import type { DealState } from '@/lib/scoring/deal';
+import { recordLlmCall, type Meter } from './usage';
 
 /**
  * Ask the model one narrow question: for each named issue, what did the two
@@ -47,7 +48,8 @@ Respond with ONLY this JSON:
 {"reached": <true|false>, "terms": [{"issue": "<issue name exactly as listed>", "learnerLastAsk": <number|null>, "counterpartLastOffer": <number|null>, "agreed": <number|null>}]}`;
 }
 
-export function parseDealResponse(raw: string): DealState {
+/** Returns null when the model's reply cannot be parsed: unknown is not the same as "no deal". */
+export function parseDealResponse(raw: string): DealState | null {
   const candidates = [raw.trim(), raw.match(/```json\s*\n?([\s\S]*?)\n?\s*```/)?.[1], raw.match(/\{[\s\S]*\}/)?.[0]];
   for (const text of candidates) {
     if (!text) continue;
@@ -58,19 +60,21 @@ export function parseDealResponse(raw: string): DealState {
       // try the next candidate
     }
   }
-  return { reached: false, terms: [] };
+  return null;
 }
 
 export async function extractDealState(
   messages: Array<{ role: string; content: string }>,
   issues: Issue[],
-  personaName: string
-): Promise<DealState> {
-  if (issues.length === 0 || !messages.some((m) => m.role === 'user')) return { reached: false, terms: [] };
+  personaName: string,
+  meter?: Meter
+): Promise<DealState | null> {
+  if (issues.length === 0 || !messages.some((m) => m.role === 'user')) return null;
   const chain = LLMProviderFactory.getProviderChain();
   const response = await chain.generateResponse([{ role: 'user', content: buildDealPrompt(messages, issues, personaName) }], {
     temperature: 0,
     maxTokens: 600,
   });
+  if (meter) await recordLlmCall(meter, response);
   return parseDealResponse(response.content);
 }

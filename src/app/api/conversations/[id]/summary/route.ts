@@ -6,6 +6,8 @@ import { extractDealState } from '@/lib/llm/deal';
 import { readEvaluationCriteria, readIssues } from '@/lib/codec/scenario';
 import { weightedOverall } from '@/lib/scoring/frameworks';
 import { computeDealOutcome } from '@/lib/scoring/deal';
+import { assertWithinBudget } from '@/lib/llm/usage';
+import { BudgetExceededError } from '@/types';
 
 // POST /api/conversations/[id]/summary - Generate summary for completed conversation
 export async function POST(
@@ -72,6 +74,15 @@ export async function POST(
       return NextResponse.json({ summary: conversation.summary });
     }
 
+    try {
+      await assertWithinBudget(session.user.id);
+    } catch (error) {
+      if (error instanceof BudgetExceededError) {
+        return NextResponse.json({ error: error.message, code: 'budget_exceeded' }, { status: 429 });
+      }
+      throw error;
+    }
+
     const transcript = conversation.messages.map((m: { role: string; content: string }) => ({
       role: m.role,
       content: m.content,
@@ -83,7 +94,9 @@ export async function POST(
     let deal = null;
     if (issues.length > 0) {
       try {
-        deal = computeDealOutcome(await extractDealState(transcript, issues, conversation.persona.name), issues);
+        const state = await extractDealState(transcript, issues, conversation.persona.name, { userId: session.user.id, purpose: 'deal', conversationId: id });
+        // No usable extraction means "unknown": store nothing rather than show a false "No deal".
+        deal = state ? computeDealOutcome(state, issues) : null;
       } catch (error) {
         console.error('[summary] deal extraction failed', error);
       }
@@ -93,7 +106,11 @@ export async function POST(
     // per-framework scores, computed here; a failed evaluation is "not scored".
     let evaluation;
     try {
-      evaluation = await evaluateConversation(transcript, conversation.persona, conversation.scenario, deal ?? undefined);
+      evaluation = await evaluateConversation(transcript, conversation.persona, conversation.scenario, deal ?? undefined, {
+        userId: session.user.id,
+        purpose: 'evaluation',
+        conversationId: id,
+      });
     } catch (error) {
       console.error('[summary] evaluation failed', error);
       evaluation = null;
