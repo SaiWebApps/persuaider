@@ -1,3 +1,4 @@
+import { safeRedirect } from '@/lib/auth/redirect';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { checkApiRateLimit } from '@/lib/ratelimit';
 
@@ -28,7 +29,7 @@ export default clerkMiddleware(async (auth, req) => {
   } else if (isAuthPage(req)) {
     const { userId } = await auth();
     if (userId) {
-      return Response.redirect(new URL('/dashboard', req.url));
+      return Response.redirect(new URL(safeRedirect(req.nextUrl.searchParams.get('redirect_url')), req.url));
     }
   }
 });

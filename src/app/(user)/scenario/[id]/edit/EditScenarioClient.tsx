@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CopyShareLink } from '@/components/scenarios/CopyShareLink';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -84,6 +85,9 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
               <label className="flex items-center gap-2"><input type="radio" name="visibility" checked={visibility === 'public'} onChange={() => setVisibility('public')} data-testid="visibility-public" /> Public (on Explore; anyone can copy your briefs and numbers)</label>
             </div>
           </fieldset>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Send this scenario to someone: <CopyShareLink joinCode={scenario.joinCode} testId="share-link" />
+          </p>
         </section>
 
         {roles.length > 0 && (
