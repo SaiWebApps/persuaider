@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { evaluateConversation } from '@/lib/llm/evaluation';
+import { extractDealState } from '@/lib/llm/deal';
+import { readEvaluationCriteria, readIssues } from '@/lib/codec/scenario';
+import { weightedOverall } from '@/lib/scoring/frameworks';
+import { computeDealOutcome } from '@/lib/scoring/deal';
 
 // POST /api/conversations/[id]/summary - Generate summary for completed conversation
 export async function POST(
@@ -68,28 +72,43 @@ export async function POST(
       return NextResponse.json({ summary: conversation.summary });
     }
 
-    // Evaluate the conversation using LLM
+    const transcript = conversation.messages.map((m: { role: string; content: string }) => ({
+      role: m.role,
+      content: m.content,
+    }));
+    const issues = readIssues(conversation.scenario.issues);
+    const criteria = readEvaluationCriteria(conversation.scenario.evaluationCriteria);
+
+    // Deal outcome: the model extracts the numbers, the arithmetic is ours.
+    let deal = null;
+    if (issues.length > 0) {
+      try {
+        deal = computeDealOutcome(await extractDealState(transcript, issues, conversation.persona.name), issues);
+      } catch (error) {
+        console.error('[summary] deal extraction failed', error);
+      }
+    }
+
+    // Coaching evaluation. The overall score is the weighted mean of the
+    // per-framework scores, computed here; a failed evaluation is "not scored".
     let evaluation;
     try {
-      evaluation = await evaluateConversation(
-        conversation.messages.map((m: { role: string; content: string }) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        conversation.persona,
-        conversation.scenario
-      );
-    } catch {
+      evaluation = await evaluateConversation(transcript, conversation.persona, conversation.scenario, deal ?? undefined);
+    } catch (error) {
+      console.error('[summary] evaluation failed', error);
       evaluation = null;
     }
+    const frameworkScores = evaluation?.frameworkScores ?? null;
+    const overallScore = weightedOverall(frameworkScores, criteria);
 
     const summary = await prisma.summary.create({
       data: {
         conversationId: id,
-        overallScore: evaluation?.overallScore ?? null,
+        overallScore,
         winningArguments: JSON.stringify(evaluation?.winningArguments ?? []),
-        llmFeedback: evaluation?.llmFeedback ? JSON.stringify(evaluation.llmFeedback) : null,
-        frameworkScores: evaluation?.frameworkScores ? JSON.stringify(evaluation.frameworkScores) : null,
+        llmFeedback: evaluation?.llmFeedback && overallScore !== null ? JSON.stringify(evaluation.llmFeedback) : null,
+        frameworkScores: frameworkScores && overallScore !== null ? JSON.stringify(frameworkScores) : null,
+        deal: deal ? JSON.stringify(deal) : null,
       },
     });
 

@@ -42,3 +42,31 @@ export function readLLMFeedback(text: string | null | undefined): LLMFeedback | 
 export function readFrameworkScores(text: string | null | undefined): Record<string, number> | null {
   return lenient(frameworkScoresSchema.nullable(), text, null);
 }
+
+const issueOutcomeSchema = z.object({
+  name: z.string(),
+  unit: z.string().optional(),
+  learnerWants: z.enum(['higher', 'lower']),
+  agreed: z.number().nullable(),
+  learnerLastAsk: z.number().nullable(),
+  counterpartLastOffer: z.number().nullable(),
+  learnerTarget: z.number(),
+  learnerReservation: z.number(),
+  counterpartTarget: z.number(),
+  counterpartReservation: z.number(),
+  learnerCapture: z.number().nullable(),
+  withinBothLimits: z.boolean().nullable(),
+  leftOnTable: z.number().nullable(),
+});
+
+const dealOutcomeSchema = z.object({
+  reached: z.boolean(),
+  issues: z.array(issueOutcomeSchema),
+  learnerUtility: z.number().nullable(),
+});
+
+export type StoredDealOutcome = z.infer<typeof dealOutcomeSchema>;
+
+export function readDealOutcome(text: string | null | undefined): StoredDealOutcome | null {
+  return lenient(dealOutcomeSchema.nullable(), text, null);
+}

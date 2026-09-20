@@ -4,8 +4,8 @@ import { loginAsDemo } from './helpers';
 test('chat response appears after provider swap', async ({ page }) => {
   await loginAsDemo(page);
 
-  // Use Alex Chen specifically
-  await page.locator('[data-testid="persona-card"]:has-text("Alex Chen")').click();
+  // Frank (AI adoption scenario): no test completes his conversation, so the card always opens a chat
+  await page.locator('[data-testid="persona-card"]:has-text("Frank the Finance Guy")').click();
   await page.waitForURL('**/chat', { timeout: 15000 });
 
   // Wait for greeting

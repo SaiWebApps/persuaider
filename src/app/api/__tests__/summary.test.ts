@@ -37,6 +37,10 @@ const mockEvaluateConversation = jest.fn();
 jest.mock('@/lib/llm/evaluation', () => ({
   evaluateConversation: (...args: unknown[]) => mockEvaluateConversation(...args),
 }));
+const mockExtractDealState = jest.fn();
+jest.mock('@/lib/llm/deal', () => ({
+  extractDealState: (...args: unknown[]) => mockExtractDealState(...args),
+}));
 
 import { NextRequest } from 'next/server';
 import { POST, GET } from '../conversations/[id]/summary/route';
@@ -66,6 +70,7 @@ const mockConversationData = {
     userRole: 'Employee',
     aiRole: 'Manager',
     evaluationCriteria: '{}',
+    issues: '[]',
   },
 };
 
@@ -142,7 +147,8 @@ describe('POST /api/conversations/[id]/summary', () => {
         expect.objectContaining({ role: 'user', content: 'I want a raise' }),
       ]),
       expect.objectContaining({ name: 'Alex' }),
-      expect.objectContaining({ title: 'Salary Negotiation' })
+      expect.objectContaining({ title: 'Salary Negotiation' }),
+      undefined // no deal outcome: the scenario has no issues
     );
   });
 
@@ -162,10 +168,11 @@ describe('POST /api/conversations/[id]/summary', () => {
     const response = await POST(request, createParams('c1'));
 
     expect(response.status).toBe(200);
+    // Overall is the weighted mean of the matched framework scores (Preparation only here), not the model's 72.
     expect(mockSummary.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          overallScore: 72,
+          overallScore: 75,
           winningArguments: expect.stringContaining('Strong point'),
           llmFeedback: expect.stringContaining('Good'),
           frameworkScores: expect.stringContaining('Preparation'),
@@ -192,6 +199,60 @@ describe('POST /api/conversations/[id]/summary', () => {
         }),
       })
     );
+  });
+
+  it('stores "not scored" (null) when the evaluator returns no usable framework scores', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
+    mockConversation.findUnique.mockResolvedValue(mockConversationData);
+    mockEvaluateConversation.mockResolvedValue({
+      overallScore: 50,
+      winningArguments: [],
+      llmFeedback: { whatWentWell: ['Engaged'], whatToImprove: ['Evaluation could not be fully completed'], specificSuggestions: [] },
+      frameworkScores: {},
+    });
+    mockSummary.create.mockResolvedValue({ id: 'sum-new', overallScore: null });
+    mockConversation.update.mockResolvedValue({});
+
+    await POST(new NextRequest('http://localhost:3000/api/conversations/c1/summary'), createParams('c1'));
+
+    expect(mockSummary.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ overallScore: null, frameworkScores: null, llmFeedback: null }) })
+    );
+  });
+
+  it('computes and stores the deal outcome when the scenario has issues', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
+    const issues = JSON.stringify([
+      { name: 'Annual salary', unit: 'USD', learnerWants: 'higher', learner: { target: 130000, reservation: 115000, weight: 100 }, counterpart: { target: 108000, reservation: 120000, weight: 100 } },
+    ]);
+    mockConversation.findUnique.mockResolvedValue({ ...mockConversationData, scenario: { ...mockConversationData.scenario, issues } });
+    mockExtractDealState.mockResolvedValue({ reached: true, terms: [{ issue: 'Annual salary', agreed: 118000, learnerLastAsk: 122000, counterpartLastOffer: 118000 }] });
+    mockEvaluateConversation.mockResolvedValue({ overallScore: 0, winningArguments: [], llmFeedback: { whatWentWell: [], whatToImprove: [], specificSuggestions: [] }, frameworkScores: { Preparation: 60 } });
+    mockSummary.create.mockResolvedValue({ id: 'sum-new' });
+    mockConversation.update.mockResolvedValue({});
+
+    await POST(new NextRequest('http://localhost:3000/api/conversations/c1/summary'), createParams('c1'));
+
+    expect(mockExtractDealState).toHaveBeenCalledWith(expect.any(Array), expect.arrayContaining([expect.objectContaining({ name: 'Annual salary' })]), 'Alex');
+    const data = mockSummary.create.mock.calls[0][0].data;
+    const deal = JSON.parse(data.deal);
+    expect(deal.reached).toBe(true);
+    expect(deal.issues[0].learnerCapture).toBe(20);
+    // The evaluator receives the computed outcome so its feedback can cite the numbers.
+    expect(mockEvaluateConversation).toHaveBeenCalledWith(expect.any(Array), expect.anything(), expect.anything(), expect.objectContaining({ reached: true }));
+  });
+
+  it('skips deal extraction when the scenario has no issues', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
+    mockConversation.findUnique.mockResolvedValue(mockConversationData);
+    mockEvaluateConversation.mockResolvedValue({ overallScore: 0, winningArguments: [], llmFeedback: { whatWentWell: [], whatToImprove: [], specificSuggestions: [] }, frameworkScores: { Preparation: 60 } });
+    mockSummary.create.mockResolvedValue({ id: 'sum-new' });
+    mockConversation.update.mockResolvedValue({});
+
+    await POST(new NextRequest('http://localhost:3000/api/conversations/c1/summary'), createParams('c1'));
+
+    expect(mockExtractDealState).not.toHaveBeenCalled();
+    expect(mockSummary.create.mock.calls[0][0].data.deal).toBeNull();
   });
 
   it('marks conversation as completed after summary', async () => {
