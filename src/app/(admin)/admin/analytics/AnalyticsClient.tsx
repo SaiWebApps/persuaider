@@ -6,6 +6,7 @@ interface GateData {
   learnersCompleted: number;
   learnersFeltReal: number;
   feltRealAnswers: number;
+  excludedSessions?: number;
   targetLearners: number;
   targetFeltReal: number;
 }
@@ -88,7 +89,10 @@ export function AnalyticsClient() {
       {data.gate && (
         <div data-testid="engine-gate" className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Engine gate</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">No simulation work until ten learners complete a session and five say the opponent felt real.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            No simulation work until ten strangers complete a session (at least three of their own messages) and five say the opponent felt real (4–5).
+            Admins, seeded and test accounts are excluded{typeof data.gate.excludedSessions === 'number' ? ` (${data.gate.excludedSessions} such sessions excluded)` : ''}.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Learners who completed a session</p>

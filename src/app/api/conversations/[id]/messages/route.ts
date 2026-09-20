@@ -61,8 +61,10 @@ export async function POST(
       include: {
         persona: { select: personaPromptSelect },
         scenario: { select: scenarioPromptSelect },
+        // Latest 50 messages (returned newest first; reversed below), so long sessions
+        // keep the recent context rather than the opening.
         messages: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'desc' },
           take: 50,
         },
       },
@@ -89,7 +91,8 @@ export async function POST(
       );
     }
 
-    if (winState(conversation.messages, readWinCondition(conversation.scenario.winCondition)).limitReached) {
+    const userTurns = await prisma.message.count({ where: { conversationId: id, role: 'user' } });
+    if (winState(Array.from({ length: userTurns }, () => ({ role: 'user' })), readWinCondition(conversation.scenario.winCondition)).limitReached) {
       return NextResponse.json({ error: 'You have used all the messages for this scenario. End the negotiation to get your summary.', code: 'limit_reached' }, { status: 400 });
     }
 
@@ -113,7 +116,7 @@ export async function POST(
 
     // Prepare message history
     const allMessages = [
-      ...conversation.messages.map((m: { role: string; content: string }) => ({
+      ...[...conversation.messages].reverse().map((m: { role: string; content: string }) => ({
         role: m.role,
         content: m.content,
       })),

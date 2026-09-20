@@ -58,9 +58,9 @@ test('message limit is enforced, felt-real is recorded, the gate counts it', asy
   await adminPage.goto('/admin/analytics');
   const gate = adminPage.locator('[data-testid="engine-gate"]');
   await expect(gate).toBeVisible({ timeout: 20000 });
-  const completed = Number(((await adminPage.locator('[data-testid="gate-completed"]').textContent()) ?? '0').split('/')[0]);
-  const feltReal = Number(((await adminPage.locator('[data-testid="gate-felt-real"]').textContent()) ?? '0').split('/')[0]);
-  expect(completed).toBeGreaterThanOrEqual(1);
-  expect(feltReal).toBeGreaterThanOrEqual(1);
+  // The demo account is a seeded account, so its session must not count as a stranger.
+  await expect(adminPage.locator('[data-testid="gate-completed"]')).toContainText('/ 10');
+  await expect(adminPage.locator('[data-testid="gate-felt-real"]')).toContainText('/ 5');
+  await expect(gate).toContainText('excluded');
   await adminCtx.close();
 });

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/admin';
 import { prisma } from '@/lib/db/client';
 
+/** Accounts that are never "strangers" for the engine gate. */
+const SEEDED_EMAILS = new Set(['demo@persuaider.com', 'admin@persuaider.dev', 'system@persuaider.local']);
+
 export async function GET() {
   const denied = await requireAdmin();
   if (denied) return denied;
@@ -118,14 +121,24 @@ export async function GET() {
 
   // The engine gate: ten distinct learners complete a session in which they spoke,
   // and five say the opponent felt real (4 or 5 out of 5).
-  const gateRows = (await prisma.conversation.findMany({
-    where: { status: 'completed', messages: { some: { role: 'user' } } },
-    select: { userId: true, summary: { select: { feltReal: true } } },
+  // "Strangers": role user, not a seeded or test account; a session counts only with
+  // at least three learner turns.
+  const allRows = (await prisma.conversation.findMany({
+    where: { status: 'completed' },
+    select: {
+      userId: true,
+      summary: { select: { feltReal: true } },
+      user: { select: { role: true, email: true } },
+      _count: { select: { messages: { where: { role: 'user' } } } },
+    },
   })) ?? [];
+  const isStranger = (r: (typeof allRows)[number]) => r.user.role === 'user' && !SEEDED_EMAILS.has(r.user.email) && !/\+clerk_test/i.test(r.user.email);
+  const gateRows = allRows.filter((r) => r._count.messages >= 3 && isStranger(r));
+  const excludedSessions = allRows.filter((r) => r._count.messages >= 3 && !isStranger(r)).length;
   const learnersCompleted = new Set(gateRows.map((r) => r.userId)).size;
   const learnersFeltReal = new Set(gateRows.filter((r) => (r.summary?.feltReal ?? 0) >= 4).map((r) => r.userId)).size;
   const feltRealAnswers = gateRows.filter((r) => r.summary?.feltReal != null).length;
-  const gate = { learnersCompleted, learnersFeltReal, feltRealAnswers, targetLearners: 10, targetFeltReal: 5 };
+  const gate = { learnersCompleted, learnersFeltReal, feltRealAnswers, excludedSessions, targetLearners: 10, targetFeltReal: 5 };
 
   return NextResponse.json({
     gate,

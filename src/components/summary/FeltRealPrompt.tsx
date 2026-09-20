@@ -35,7 +35,7 @@ export function FeltRealPrompt({ conversationId, initial }: { conversationId: st
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6" data-testid="felt-real">
       <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Did the opponent feel real?</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">1 = like a chatbot, 5 = like a person across the table.</p>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">1 = not at all, 5 = completely.</p>
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <button

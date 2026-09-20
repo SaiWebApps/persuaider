@@ -48,6 +48,7 @@ const mockPersona = {
 };
 const mockMessage = {
   create: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 const mockScenario = {
   findMany: jest.fn(),

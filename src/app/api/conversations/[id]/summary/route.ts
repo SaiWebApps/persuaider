@@ -211,9 +211,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const note = typeof body.note === 'string' ? body.note.slice(0, 500) : undefined;
 
-  const summary = await prisma.summary.findUnique({ where: { conversationId: id }, select: { id: true, conversation: { select: { userId: true } } } });
+  // Ownership is part of the lookup: a stranger cannot tell "no such summary" from "not yours".
+  const summary = await prisma.summary.findFirst({ where: { conversationId: id, conversation: { userId: session.user.id } }, select: { id: true } });
   if (!summary) return NextResponse.json({ error: 'Summary not found' }, { status: 404 });
-  if (summary.conversation.userId !== session.user.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const updated = await prisma.summary.update({
     where: { id: summary.id },

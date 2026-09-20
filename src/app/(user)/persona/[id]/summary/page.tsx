@@ -96,6 +96,8 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
 
       <main className="max-w-4xl mx-auto py-8 px-4">
         {/* Persona + Scenario Info */}
+        <FeltRealPrompt conversationId={conversation.id} initial={conversation.summary.feltReal ?? null} />
+
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -123,7 +125,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
           ) : null}
           {threshold !== null && conversation.summary.overallScore != null && (
             <p className="mt-2 text-center text-sm" data-testid="win-condition">
-              Target score {threshold}:{' '}
+              Target score {threshold} (by the evaluator&apos;s score):{' '}
               <span className={conversation.summary.overallScore >= threshold ? 'font-medium text-green-700 dark:text-green-300' : 'font-medium text-amber-700 dark:text-amber-300'}>
                 {conversation.summary.overallScore >= threshold ? 'met' : 'not met'}
               </span>
@@ -136,8 +138,6 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
             </div>
           )}
         </div>
-
-        <FeltRealPrompt conversationId={conversation.id} initial={conversation.summary.feltReal ?? null} />
 
         {/* Deal outcome */}
         {deal && deal.issues.length > 0 && (

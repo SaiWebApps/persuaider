@@ -379,7 +379,11 @@ from the learner's second completed attempt onward; Playwright runs in CI on a r
 a real Postgres and the Clerk test instance (secrets set 2026-09-20). Two adversarial
 reviewers (process, goal) gate every slice from now on (CLAUDE.md).
 
-Slice 8 (planned, not blocked): the Phase 1 items skipped earlier, each with click-steps:
+Slice 8 as shipped (2026-09-20): win condition enforced (max messages ends the session, score
+threshold shown as met/not met) plus the gate instrument the goal reviewer asked for: a
+"did the opponent feel real?" 1–5 question on the summary and an Engine gate card in admin
+analytics counting strangers only (role user, not seeded or test accounts, at least three of
+their own messages). The other two Phase 1 items were split out, not skipped: slice 9 =
 learner picks a side (Conversation.roleId, role brief reaches the prompt for that side);
-generate-scenario modal mounted on the dashboard with AI-proposed Issues the author confirms;
-win condition enforced at runtime (max messages ends the session; score threshold shown).
+slice 10 = generate-scenario modal mounted on the dashboard with AI-proposed Issues the
+author confirms.

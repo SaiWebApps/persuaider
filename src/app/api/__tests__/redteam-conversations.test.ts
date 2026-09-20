@@ -31,6 +31,7 @@ const mockConversation = {
 };
 const mockMessage = {
   create: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 const mockPersona = {
   findUnique: jest.fn(),
