@@ -24,6 +24,7 @@ export const scenarioPromptSelect = {
   contextNotes: true,
   evaluationCriteria: true,
   issues: true,
+  winCondition: true,
 } satisfies Prisma.ScenarioSelect;
 
 export type PersonaForPrompt = Prisma.PersonaGetPayload<{ select: typeof personaPromptSelect }>;

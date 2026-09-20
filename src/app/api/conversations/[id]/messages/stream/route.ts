@@ -8,6 +8,8 @@ import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/co
 import { assertWithinBudget, estimatedResponse, recordLlmCall } from '@/lib/llm/usage';
 import { LLM_MODELS } from '@/lib/llm/models';
 import { BudgetExceededError } from '@/types';
+import { winState } from '@/lib/conversation/win';
+import { readWinCondition } from '@/lib/codec/scenario';
 
 export async function POST(
   request: NextRequest,
@@ -48,6 +50,13 @@ export async function POST(
   }
   if (conversation.status !== 'in_progress') {
     return new Response(JSON.stringify({ error: 'Conversation is not active' }), { status: 400 });
+  }
+
+  if (winState(conversation.messages, readWinCondition(conversation.scenario.winCondition)).limitReached) {
+    return new Response(JSON.stringify({ error: 'You have used all the messages for this scenario. End the negotiation to get your summary.', code: 'limit_reached' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {

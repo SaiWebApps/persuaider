@@ -116,7 +116,19 @@ export async function GET() {
     };
   });
 
+  // The engine gate: ten distinct learners complete a session in which they spoke,
+  // and five say the opponent felt real (4 or 5 out of 5).
+  const gateRows = (await prisma.conversation.findMany({
+    where: { status: 'completed', messages: { some: { role: 'user' } } },
+    select: { userId: true, summary: { select: { feltReal: true } } },
+  })) ?? [];
+  const learnersCompleted = new Set(gateRows.map((r) => r.userId)).size;
+  const learnersFeltReal = new Set(gateRows.filter((r) => (r.summary?.feltReal ?? 0) >= 4).map((r) => r.userId)).size;
+  const feltRealAnswers = gateRows.filter((r) => r.summary?.feltReal != null).length;
+  const gate = { learnersCompleted, learnersFeltReal, feltRealAnswers, targetLearners: 10, targetFeltReal: 5 };
+
   return NextResponse.json({
+    gate,
     overview: {
       totalConversations,
       completedConversations,

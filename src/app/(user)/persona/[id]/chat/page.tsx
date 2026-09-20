@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { ChatContainer } from '@/components/chat/ChatContainer';
 import { startOrResumeConversation } from '@/lib/conversation/start';
 import { AuthorizationError, NotFoundError } from '@/types';
+import { readWinCondition } from '@/lib/codec/scenario';
 
 interface ChatPageProps {
   params: Promise<{ id: string }>;
@@ -34,6 +35,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
       conversationId={conversation.id}
       persona={conversation.persona}
       scenarioTitle={conversation.scenario.title}
+      winCondition={readWinCondition(conversation.scenario.winCondition)}
       initialMessages={conversation.messages.map((m) => ({
         ...m,
         role: m.role as 'user' | 'assistant',

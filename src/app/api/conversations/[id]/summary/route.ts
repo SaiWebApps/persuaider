@@ -197,3 +197,28 @@ export async function GET(
     );
   }
 }
+
+// PATCH /api/conversations/[id]/summary - record "did the opponent feel real?"
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await request.json().catch(() => ({}));
+  const feltReal = body.feltReal;
+  if (!Number.isInteger(feltReal) || feltReal < 1 || feltReal > 5) {
+    return NextResponse.json({ error: 'feltReal must be an integer from 1 to 5' }, { status: 400 });
+  }
+  const note = typeof body.note === 'string' ? body.note.slice(0, 500) : undefined;
+
+  const summary = await prisma.summary.findUnique({ where: { conversationId: id }, select: { id: true, conversation: { select: { userId: true } } } });
+  if (!summary) return NextResponse.json({ error: 'Summary not found' }, { status: 404 });
+  if (summary.conversation.userId !== session.user.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  const updated = await prisma.summary.update({
+    where: { id: summary.id },
+    data: { feltReal, ...(note !== undefined ? { feltRealNote: note } : {}) },
+    select: { id: true, feltReal: true, feltRealNote: true },
+  });
+  return NextResponse.json({ summary: updated });
+}

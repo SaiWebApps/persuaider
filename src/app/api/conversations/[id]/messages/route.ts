@@ -7,6 +7,8 @@ import { DEFAULT_MOOD } from '@/types';
 import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
 import { assertWithinBudget } from '@/lib/llm/usage';
 import { BudgetExceededError } from '@/types';
+import { winState } from '@/lib/conversation/win';
+import { readWinCondition } from '@/lib/codec/scenario';
 
 // POST /api/conversations/[id]/messages - Add message to conversation
 export async function POST(
@@ -85,6 +87,10 @@ export async function POST(
         { error: 'Conversation is not active' },
         { status: 400 }
       );
+    }
+
+    if (winState(conversation.messages, readWinCondition(conversation.scenario.winCondition)).limitReached) {
+      return NextResponse.json({ error: 'You have used all the messages for this scenario. End the negotiation to get your summary.', code: 'limit_reached' }, { status: 400 });
     }
 
     try {

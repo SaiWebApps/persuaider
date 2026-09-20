@@ -155,6 +155,8 @@ model Summary {
   llmFeedback       String?      // JSON: { whatWentWell, whatToImprove, specificSuggestions }
   frameworkScores   String?      // JSON: per-framework breakdown from LLM
   deal              String?      // JSON: DealOutcome computed in code from the extracted deal state and the scenario's Issues
+  feltReal          Int?         // 1–5: learner's answer to "did the opponent feel real?"
+  feltRealNote      String?
   generatedAt       DateTime     @default(now())
 
   conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

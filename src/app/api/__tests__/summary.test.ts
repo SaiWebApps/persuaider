@@ -29,6 +29,7 @@ const mockConversation = {
 const mockSummary = {
   create: jest.fn(),
   findUnique: jest.fn(),
+  update: jest.fn(),
 };
 const mockUserDb = {
   findUnique: jest.fn(),
@@ -54,7 +55,7 @@ jest.mock('@/lib/llm/deal', () => ({
 }));
 
 import { NextRequest } from 'next/server';
-import { POST, GET } from '../conversations/[id]/summary/route';
+import { POST, GET, PATCH } from '../conversations/[id]/summary/route';
 
 function createParams(id: string): { params: Promise<{ id: string }> } {
   return { params: Promise.resolve({ id }) };
@@ -338,5 +339,32 @@ describe('GET /api/conversations/[id]/summary', () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.summary).toEqual(summary);
+  });
+});
+
+describe('PATCH /api/conversations/[id]/summary (felt real)', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const req = (body: unknown) => new NextRequest('http://localhost:3000/api/conversations/c1/summary', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  it('rejects values outside 1-5', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
+    expect((await PATCH(req({ feltReal: 0 }), createParams('c1'))).status).toBe(400);
+    expect((await PATCH(req({ feltReal: 'yes' }), createParams('c1'))).status).toBe(400);
+  });
+
+  it('only the conversation owner can answer', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'someone-else' } });
+    mockSummary.findUnique.mockResolvedValue({ id: 's1', conversation: { userId: 'user-1' } });
+    expect((await PATCH(req({ feltReal: 4 }), createParams('c1'))).status).toBe(403);
+    expect(mockSummary.update).not.toHaveBeenCalled();
+  });
+
+  it('stores the answer', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
+    mockSummary.findUnique.mockResolvedValue({ id: 's1', conversation: { userId: 'user-1' } });
+    mockSummary.update.mockResolvedValue({ id: 's1', feltReal: 4, feltRealNote: null });
+    const res = await PATCH(req({ feltReal: 4 }), createParams('c1'));
+    expect(res.status).toBe(200);
+    expect(mockSummary.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 's1' }, data: { feltReal: 4 } }));
   });
 });
