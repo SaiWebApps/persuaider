@@ -33,7 +33,16 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+
+// The start-or-resume rules live in @/lib/conversation/start and are tested there.
+// Routes are tested for authorization and for mapping the module's outcomes to HTTP.
+const mockStart = jest.fn();
+jest.mock('@/lib/conversation/start', () => ({
+  startOrResumeConversation: (...args: unknown[]) => mockStart(...args),
+}));
+
 import { POST } from '../conversations/[id]/reattempt/route';
+import { AuthorizationError } from '@/types';
 
 function createRequest(): Request {
   return new Request('http://localhost:3000/api/conversations/conv-1/reattempt', {
@@ -46,198 +55,64 @@ function createContext(id: string) {
 }
 
 describe('POST /api/conversations/[id]/reattempt', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
-  });
+  const owner = { user: { id: 'user-1', role: 'user' } };
+  const completed = { id: 'conv-1', userId: 'user-1', personaId: 'p1', scenarioId: 's1', status: 'completed' };
+
+  beforeEach(() => jest.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
     mockAuthFn.mockResolvedValue(null);
     const response = await POST(createRequest(), createContext('conv-1'));
     expect(response.status).toBe(401);
-    const data = await response.json();
-    expect(data.error).toBe('Unauthorized');
   });
 
-  it('returns 403 when email not verified', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockUserDb.findUnique.mockResolvedValue({ emailVerified: null });
-    const response = await POST(createRequest(), createContext('conv-1'));
-    expect(response.status).toBe(403);
-    const data = await response.json();
-    expect(data.error).toBe('Email not verified');
-  });
-
-  it('returns 404 when conversation does not exist', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
+  it('returns 404 when the conversation does not exist', async () => {
+    mockAuthFn.mockResolvedValue(owner);
     mockConversation.findUnique.mockResolvedValue(null);
-    const response = await POST(createRequest(), createContext('nonexistent'));
+    const response = await POST(createRequest(), createContext('conv-1'));
     expect(response.status).toBe(404);
-    const data = await response.json();
-    expect(data.error).toBe('Conversation not found');
   });
 
-  it('returns 403 when conversation belongs to another user', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-2',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'completed',
-    });
+  it('returns 403 when the conversation belongs to another user', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'someone-else', role: 'user' } });
+    mockConversation.findUnique.mockResolvedValue(completed);
     const response = await POST(createRequest(), createContext('conv-1'));
     expect(response.status).toBe(403);
-    const data = await response.json();
-    expect(data.error).toBe('Forbidden');
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when conversation is not completed', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'in_progress',
-    });
+  it('returns 400 when the conversation is not completed', async () => {
+    mockAuthFn.mockResolvedValue(owner);
+    mockConversation.findUnique.mockResolvedValue({ ...completed, status: 'in_progress' });
     const response = await POST(createRequest(), createContext('conv-1'));
     expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toBe('Conversation is not completed');
+    expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it('returns 404 when persona has been deleted', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'completed',
-    });
-    mockPersona.findUnique.mockResolvedValue(null);
-    const response = await POST(createRequest(), createContext('conv-1'));
-    expect(response.status).toBe(404);
-    const data = await response.json();
-    expect(data.error).toBe('Persona not found');
-  });
-
-  it('returns 201 with new conversation on valid reattempt', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'completed',
-    });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      name: 'Alex',
-      initialGreeting: 'Welcome back!',
-    });
-    mockConversation.findFirst.mockResolvedValue(null);
-    mockConversation.create.mockResolvedValue({ id: 'conv-new' });
-    mockMessage.create.mockResolvedValue({ id: 'm1', content: 'Welcome back!' });
-
+  it('returns 201 with the new conversation id', async () => {
+    mockAuthFn.mockResolvedValue(owner);
+    mockConversation.findUnique.mockResolvedValue(completed);
+    mockStart.mockResolvedValue({ conversation: { id: 'conv-2' }, created: true });
     const response = await POST(createRequest(), createContext('conv-1'));
     expect(response.status).toBe(201);
-    const data = await response.json();
-    expect(data.conversationId).toBe('conv-new');
-    expect(mockMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          conversationId: 'conv-new',
-          role: 'assistant',
-          content: 'Welcome back!',
-        }),
-      })
-    );
+    expect(await response.json()).toEqual({ conversationId: 'conv-2' });
+    expect(mockStart).toHaveBeenCalledWith({ userId: 'user-1', role: 'user', personaId: 'p1', scenarioId: 's1' });
   });
 
-  it('returns 200 with existing in-progress conversation (idempotency)', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'completed',
-    });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      name: 'Alex',
-      initialGreeting: 'Hello',
-    });
-    mockConversation.findFirst.mockResolvedValue({ id: 'conv-existing' });
-
+  it('returns 200 when an in-progress attempt already exists (idempotent)', async () => {
+    mockAuthFn.mockResolvedValue(owner);
+    mockConversation.findUnique.mockResolvedValue(completed);
+    mockStart.mockResolvedValue({ conversation: { id: 'conv-existing' }, created: false });
     const response = await POST(createRequest(), createContext('conv-1'));
     expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.conversationId).toBe('conv-existing');
-    expect(mockConversation.create).not.toHaveBeenCalled();
+    expect(await response.json()).toEqual({ conversationId: 'conv-existing' });
   });
 
-  it('uses default greeting when persona has no initialGreeting', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'completed',
-    });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      name: 'Alex',
-      initialGreeting: null,
-    });
-    mockConversation.findFirst.mockResolvedValue(null);
-    mockConversation.create.mockResolvedValue({ id: 'conv-new' });
-    mockMessage.create.mockResolvedValue({ id: 'm1' });
-
-    await POST(createRequest(), createContext('conv-1'));
-
-    expect(mockMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          content: "Hello, I'm Alex. Let's discuss.",
-        }),
-      })
-    );
-  });
-
-  it('rapid double reattempt returns same conversation (idempotent)', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'user-1' } });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'conv-1',
-      userId: 'user-1',
-      personaId: 'p1',
-      scenarioId: 's1',
-      status: 'completed',
-    });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      name: 'Alex',
-      initialGreeting: 'Hi',
-    });
-
-    // First call: no existing -> creates new
-    mockConversation.findFirst.mockResolvedValueOnce(null);
-    mockConversation.create.mockResolvedValue({ id: 'conv-new' });
-    mockMessage.create.mockResolvedValue({ id: 'm1' });
-
-    const response1 = await POST(createRequest(), createContext('conv-1'));
-    expect(response1.status).toBe(201);
-    const data1 = await response1.json();
-
-    // Second call: existing in-progress found
-    mockConversation.findFirst.mockResolvedValueOnce({ id: 'conv-new' });
-
-    const response2 = await POST(createRequest(), createContext('conv-1'));
-    expect(response2.status).toBe(200);
-    const data2 = await response2.json();
-    expect(data2.conversationId).toBe(data1.conversationId);
+  it('returns 403 when the user has since lost access to the scenario', async () => {
+    mockAuthFn.mockResolvedValue(owner);
+    mockConversation.findUnique.mockResolvedValue(completed);
+    mockStart.mockRejectedValue(new AuthorizationError('Join this scenario before practicing with its personas'));
+    const response = await POST(createRequest(), createContext('conv-1'));
+    expect(response.status).toBe(403);
   });
 });

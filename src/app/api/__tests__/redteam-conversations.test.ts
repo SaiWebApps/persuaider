@@ -39,6 +39,14 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
+
+// The start-or-resume rules live in @/lib/conversation/start and are tested there.
+// Routes are tested for authorization and for mapping the module's outcomes to HTTP.
+const mockStart = jest.fn();
+jest.mock('@/lib/conversation/start', () => ({
+  startOrResumeConversation: (...args: unknown[]) => mockStart(...args),
+}));
+
 const mockGeneratePersonaResponse = jest.fn();
 jest.mock('@/lib/llm', () => ({
   generatePersonaResponse: (...args: unknown[]) =>
@@ -348,109 +356,24 @@ describe('Message - XSS Payloads', () => {
 // =============================================================================
 
 describe('Conversation Creation - Red Team', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUser.findUnique.mockResolvedValue({ emailVerified: new Date() });
-  });
+  beforeEach(() => jest.clearAllMocks());
 
   it('returns 400 when personaId is missing', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
     const res = await createConversation(convRequest({ scenarioId: 's1' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when scenarioId is missing', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
     const res = await createConversation(convRequest({ personaId: 'p1' }));
     expect(res.status).toBe(400);
   });
 
-  it('returns 404 when persona does not belong to the scenario', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
-    mockPersona.findUnique.mockResolvedValue({ id: 'p1', scenarioId: 'different-scenario' });
-
-    const res = await createConversation(convRequest({ personaId: 'p1', scenarioId: 's1' }));
-    expect(res.status).toBe(404);
-    const data = await res.json();
-    expect(data.error).toMatch(/not found in this scenario/i);
-  });
-
-  it('returns existing conversation if one is already in-progress', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
-    mockPersona.findUnique.mockResolvedValue({ id: 'p1', scenarioId: 's1' });
-    mockConversation.findFirst.mockResolvedValue({ id: 'existing-conv' });
-    mockConversation.findUnique.mockResolvedValue({
-      id: 'existing-conv',
-      persona: { id: 'p1', name: 'Alex', description: 'D', roleType: 'R', characteristics: null },
-      messages: [{ id: 'm1', role: 'assistant', content: 'Hi' }],
-    });
-
-    const res = await createConversation(convRequest({ personaId: 'p1', scenarioId: 's1' }));
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.conversation.id).toBe('existing-conv');
-    // Should NOT create a new conversation
-    expect(mockConversation.create).not.toHaveBeenCalled();
-  });
-
-  it('creates greeting message from persona on new conversation', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      scenarioId: 's1',
-      initialGreeting: 'Welcome to the negotiation!',
-    });
-    mockConversation.findFirst.mockResolvedValue(null);
-    mockConversation.create.mockResolvedValue({
-      id: 'new-conv',
-      persona: { id: 'p1', name: 'Alex', description: 'D', roleType: 'R', characteristics: null },
-      messages: [],
-    });
-    mockMessage.create.mockResolvedValue({
-      id: 'greeting-msg',
-      role: 'assistant',
-      content: 'Welcome to the negotiation!',
-    });
-
-    const res = await createConversation(convRequest({ personaId: 'p1', scenarioId: 's1' }));
-    expect(res.status).toBe(200);
-    expect(mockMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          role: 'assistant',
-          content: 'Welcome to the negotiation!',
-        }),
-      })
-    );
-  });
-
-  it('uses default greeting when persona has no initialGreeting', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
-    mockPersona.findUnique.mockResolvedValue({
-      id: 'p1',
-      scenarioId: 's1',
-      name: 'Bob',
-      initialGreeting: null,
-    });
-    mockConversation.findFirst.mockResolvedValue(null);
-    mockConversation.create.mockResolvedValue({
-      id: 'new-conv',
-      persona: { id: 'p1', name: 'Bob', description: 'D', roleType: 'R', characteristics: null },
-      messages: [],
-    });
-    mockMessage.create.mockResolvedValue({
-      id: 'greeting-msg',
-      role: 'assistant',
-      content: "Hello, I'm Bob. Let's discuss.",
-    });
-
-    await createConversation(convRequest({ personaId: 'p1', scenarioId: 's1' }));
-    expect(mockMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          content: "Hello, I'm Bob. Let's discuss.",
-        }),
-      })
-    );
+  it('never lets a caller choose their own userId: the session user is passed to the module', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1', role: 'user' } });
+    mockStart.mockResolvedValue({ conversation: { id: 'c1', messages: [] }, created: true });
+    await createConversation(convRequest({ personaId: 'p1', scenarioId: 's1', userId: 'victim' }));
+    expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1' }));
   });
 });

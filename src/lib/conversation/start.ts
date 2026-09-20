@@ -1,0 +1,113 @@
+import type { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/db/client';
+import { AuthorizationError, NotFoundError } from '@/types';
+
+/**
+ * Starting (or resuming) a practice Conversation has exactly one home.
+ *
+ * Callers: the chat page, POST /api/conversations, and the reattempt route.
+ * Rules enforced here and nowhere else:
+ *  - the Persona must exist (and match the Scenario if the caller names one);
+ *  - the Learner may practice only in a Scenario they joined, created, or
+ *    administer;
+ *  - one in-progress Conversation per Learner × Persona: resume it if present;
+ *  - a new Conversation and its greeting Message are written in one transaction.
+ */
+
+export const conversationInclude = {
+  persona: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      roleType: true,
+      characteristics: true,
+      scenarioId: true,
+    },
+  },
+  scenario: {
+    select: { id: true, title: true, userRole: true, aiRole: true },
+  },
+  messages: { orderBy: { createdAt: 'asc' as const } },
+} satisfies Prisma.ConversationInclude;
+
+export type StartedConversation = Prisma.ConversationGetPayload<{ include: typeof conversationInclude }>;
+
+export interface StartConversationInput {
+  userId: string;
+  role: string;
+  personaId: string;
+  /** Optional cross-check: if given, the persona must belong to this scenario. */
+  scenarioId?: string;
+}
+
+export interface StartConversationResult {
+  conversation: StartedConversation;
+  created: boolean;
+}
+
+export function defaultGreeting(personaName: string): string {
+  return `Hello, I'm ${personaName}. Let's discuss.`;
+}
+
+/**
+ * Throws AuthorizationError unless the user joined the scenario, created it,
+ * or is an admin.
+ */
+export async function assertCanPractice(userId: string, role: string, scenarioId: string): Promise<void> {
+  if (role === 'admin') return;
+  const scenario = await prisma.scenario.findUnique({
+    where: { id: scenarioId },
+    select: { createdById: true },
+  });
+  if (!scenario) throw new NotFoundError('Scenario', scenarioId);
+  if (scenario.createdById === userId) return;
+  const membership = await prisma.userScenario.findUnique({
+    where: { userId_scenarioId: { userId, scenarioId } },
+    select: { id: true },
+  });
+  if (!membership) {
+    throw new AuthorizationError('Join this scenario before practicing with its personas');
+  }
+}
+
+export async function startOrResumeConversation(input: StartConversationInput): Promise<StartConversationResult> {
+  const { userId, role, personaId, scenarioId } = input;
+
+  const persona = await prisma.persona.findUnique({
+    where: { id: personaId },
+    select: { id: true, name: true, initialGreeting: true, scenarioId: true },
+  });
+  if (!persona || (scenarioId && persona.scenarioId !== scenarioId)) {
+    throw new NotFoundError('Persona', personaId);
+  }
+
+  await assertCanPractice(userId, role, persona.scenarioId);
+
+  const existing = await prisma.conversation.findFirst({
+    where: { userId, personaId, scenarioId: persona.scenarioId, status: 'in_progress' },
+    include: conversationInclude,
+  });
+  if (existing) return { conversation: existing, created: false };
+
+  const conversation = await prisma.$transaction(async (tx) => {
+    const created = await tx.conversation.create({
+      data: { userId, personaId, scenarioId: persona.scenarioId, status: 'in_progress' },
+      select: { id: true },
+    });
+    await tx.message.create({
+      data: {
+        conversationId: created.id,
+        role: 'assistant',
+        content: persona.initialGreeting || defaultGreeting(persona.name),
+        mood: 'neutral',
+      },
+    });
+    return tx.conversation.findUniqueOrThrow({
+      where: { id: created.id },
+      include: conversationInclude,
+    });
+  });
+
+  return { conversation, created: true };
+}
