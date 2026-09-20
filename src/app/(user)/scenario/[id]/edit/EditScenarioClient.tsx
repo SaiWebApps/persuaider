@@ -81,7 +81,7 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
             <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">Visibility</legend>
             <div className="mt-1 flex gap-4 text-sm text-gray-800 dark:text-gray-200">
               <label className="flex items-center gap-2"><input type="radio" name="visibility" checked={visibility === 'unlisted'} onChange={() => setVisibility('unlisted')} data-testid="visibility-unlisted" /> Unlisted (join code {scenario.joinCode})</label>
-              <label className="flex items-center gap-2"><input type="radio" name="visibility" checked={visibility === 'public'} onChange={() => setVisibility('public')} data-testid="visibility-public" /> Public (listed on Explore)</label>
+              <label className="flex items-center gap-2"><input type="radio" name="visibility" checked={visibility === 'public'} onChange={() => setVisibility('public')} data-testid="visibility-public" /> Public (on Explore; anyone can copy your briefs and numbers)</label>
             </div>
           </fieldset>
         </section>

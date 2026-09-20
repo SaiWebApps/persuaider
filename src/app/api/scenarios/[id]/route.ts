@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { ValidationError } from '@/types';
-import { parseIssuesInput, parseVisibilityInput, readIssues, serialize } from '@/lib/codec/scenario';
+import { parseIssuesInput, parseVisibilityInput, serialize } from '@/lib/codec/scenario';
 
 /**
  * A creator (or an admin) can read and edit their own scenario: title, description,
@@ -18,30 +18,6 @@ async function loadEditable(id: string, userId: string, role: string) {
   if (!scenario) return { status: 404 as const };
   if (scenario.createdById !== userId && role !== 'admin') return { status: 404 as const }; // no existence leak
   return { status: 200 as const, scenario };
-}
-
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { id } = await params;
-  const loaded = await loadEditable(id, session.user.id, session.user.role);
-  if (loaded.status !== 200) return NextResponse.json({ error: 'Scenario not found' }, { status: 404 });
-  const s = loaded.scenario;
-  return NextResponse.json({
-    scenario: {
-      id: s.id,
-      title: s.title,
-      description: s.description,
-      userRole: s.userRole,
-      aiRole: s.aiRole,
-      visibility: s.visibility,
-      joinCode: s.joinCode,
-      learnerRoleId: s.learnerRoleId,
-      roles: s.roles.map((r) => ({ id: r.id, name: r.name, description: r.description })),
-      personas: s.personas,
-      issues: readIssues(s.issues),
-    },
-  });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -102,8 +78,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   await prisma.$transaction(async (tx) => {
+    const learnerRoleId = (data.learnerRoleId as string | null | undefined) ?? current.learnerRoleId;
     for (const u of roleUpdates) {
       await tx.role.update({ where: { id: u.id }, data: { name: u.name, description: u.description } });
+      // The side's name is copied into the prompt inputs; keep them in step.
+      const renamed = current.roles.find((r) => r.id === u.id)!.name !== u.name;
+      if (renamed) {
+        await tx.persona.updateMany({ where: { roleId: u.id }, data: { roleType: u.name } });
+        if (u.id === learnerRoleId) data.userRole = u.name;
+        else if (current.personas.some((p) => p.roleId === u.id)) data.aiRole = u.name;
+      }
     }
     if (Object.keys(data).length > 0) await tx.scenario.update({ where: { id }, data });
   });

@@ -61,4 +61,12 @@ describeIfPostgres('PATCH /api/scenarios/[id] (real database)', () => {
     expect(row!.roles.find((r) => r.id === buyerId)!.description).toBe('new brief');
     expect(JSON.parse(row!.issues)[0].learner.reservation).toBe(8600);
   });
+
+  it('renaming the persona side renames the persona roleType and the scenario aiRole', async () => {
+    const seller = await prisma.role.findFirst({ where: { scenarioId, name: 'Seller' } });
+    expect((await patch(ownerId, { roles: [{ id: seller!.id, name: 'Owner', description: 'B' }] })).status).toBe(200);
+    const persona = await prisma.persona.findFirst({ where: { scenarioId } });
+    expect(persona!.roleType).toBe('Owner');
+    expect((await prisma.scenario.findUnique({ where: { id: scenarioId } }))!.aiRole).toBe('Owner');
+  });
 });

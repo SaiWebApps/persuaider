@@ -5,7 +5,8 @@ const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({ auth: () => mockAuthFn() }));
 const mockScenario = { findUnique: jest.fn(), update: jest.fn() };
 const mockRole = { update: jest.fn() };
-const tx = { role: mockRole, scenario: mockScenario };
+const mockPersona = { updateMany: jest.fn() };
+const tx = { role: mockRole, scenario: mockScenario, persona: mockPersona };
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
     return { scenario: mockScenario, role: mockRole, $transaction: async (fn: (t: unknown) => unknown) => fn(tx) };
@@ -13,7 +14,7 @@ jest.mock('@/lib/db/client', () => ({
 }));
 
 import { NextRequest } from 'next/server';
-import { GET, PATCH } from '../scenarios/[id]/route';
+import { PATCH } from '../scenarios/[id]/route';
 
 const params = { params: Promise.resolve({ id: 's1' }) };
 const req = (body: unknown) => new NextRequest('http://localhost/api/scenarios/s1', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -29,19 +30,6 @@ beforeEach(() => {
   mockScenario.findUnique.mockResolvedValue(scenario);
   mockScenario.update.mockResolvedValue({});
   mockRole.update.mockResolvedValue({});
-});
-
-describe('GET /api/scenarios/[id]', () => {
-  it('a non-creator gets 404 (no existence leak)', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'stranger', role: 'user' } });
-    expect((await GET(new NextRequest('http://localhost/api/scenarios/s1'), params)).status).toBe(404);
-  });
-  it('the creator gets the editable shape with parsed issues', async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: 'owner', role: 'user' } });
-    const data = await (await GET(new NextRequest('http://localhost/api/scenarios/s1'), params)).json();
-    expect(data.scenario.issues[0].name).toBe('Price');
-    expect(data.scenario.roles).toHaveLength(2);
-  });
 });
 
 describe('PATCH /api/scenarios/[id]', () => {
@@ -74,6 +62,15 @@ describe('PATCH /api/scenarios/[id]', () => {
     expect(mockScenario.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 's1' }, data: expect.objectContaining({ visibility: 'public', learnerRoleId: 'r-buyer' }) }));
     expect(JSON.parse(mockScenario.update.mock.calls[0][0].data.issues)[0].learner.reservation).toBe(8600);
   });
+  it('renaming a side also renames the persona roleType and the scenario side labels the prompt reads', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'owner', role: 'user' } });
+    mockPersona.updateMany.mockResolvedValue({ count: 1 });
+    const res = await PATCH(req({ roles: [{ id: 'r-seller', name: 'Owner', description: 'B' }] }), params);
+    expect(res.status).toBe(200);
+    expect(mockPersona.updateMany).toHaveBeenCalledWith({ where: { roleId: 'r-seller' }, data: { roleType: 'Owner' } });
+    expect(mockScenario.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ aiRole: 'Owner' }) }));
+  });
+
   it('an admin may edit anyone\'s scenario', async () => {
     mockAuthFn.mockResolvedValue({ user: { id: 'someone', role: 'admin' } });
     expect((await PATCH(req({ title: 'Renamed' }), params)).status).toBe(200);
