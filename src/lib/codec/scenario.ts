@@ -103,7 +103,13 @@ const readEvaluationCriteriaSchema = z.object({
   scoringInstructions: z.string().catch(''),
 });
 const readCharacteristicsSchema = z.object({
-  openness: z.number().min(0).max(1).optional().catch(undefined),
+  // Legacy rows used a 1–10 scale; map them onto 0–1 instead of dropping them.
+  openness: z
+    .number()
+    .transform((n) => (n > 1 && n <= 10 ? n / 10 : n))
+    .pipe(z.number().min(0).max(1))
+    .optional()
+    .catch(undefined),
   concerns: z.array(z.string()).optional().catch(undefined),
   personality: z.array(z.string()).optional().catch(undefined),
   roleBehavior: z.string().optional().catch(undefined),
@@ -278,7 +284,21 @@ export const issueSchema = z.object({
   counterpart: sideSchema,
 });
 
-export const issuesSchema = z.array(issueSchema, { error: 'issues must be an array' }).max(10, { error: 'issues must have at most 10 items' });
+const issueWithDirectionSchema = issueSchema.superRefine((i, ctx) => {
+  const ok = (side: { target: number; reservation: number }, wantsHigher: boolean) =>
+    wantsHigher ? side.target >= side.reservation : side.target <= side.reservation;
+  if (!ok(i.learner, i.learnerWants === 'higher')) {
+    ctx.addIssue({ code: 'custom', path: ['learner'], message: `learner target must be ${i.learnerWants === 'higher' ? 'at least' : 'at most'} the reservation when learnerWants is "${i.learnerWants}"` });
+  }
+  if (!ok(i.counterpart, i.learnerWants === 'lower')) {
+    ctx.addIssue({ code: 'custom', path: ['counterpart'], message: `counterpart target must be ${i.learnerWants === 'lower' ? 'at least' : 'at most'} the reservation when learnerWants is "${i.learnerWants}"` });
+  }
+});
+
+export const issuesSchema = z
+  .array(issueWithDirectionSchema, { error: 'issues must be an array' })
+  .max(10, { error: 'issues must have at most 10 items' })
+  .refine((list) => new Set(list.map((i) => i.name.trim().toLowerCase())).size === list.length, { error: 'issues contains duplicate names' });
 
 export type Issue = z.infer<typeof issueSchema>;
 

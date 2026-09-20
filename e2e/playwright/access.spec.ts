@@ -18,6 +18,11 @@ test('a learner who never joined the scenario cannot open its persona chat', asy
   await memberPage.waitForURL('**/persona/*/chat', { timeout: 15000 });
   await expect(memberPage.locator('[data-testid="assistant-message"]').first()).toBeVisible({ timeout: 15000 });
   const chatUrl = memberPage.url();
+  // Reopening from the dashboard resumes the same conversation, not a new one.
+  await memberPage.goto('/dashboard');
+  await memberPage.locator('[data-testid="persona-card"]:has-text("Alex Chen")').click();
+  await memberPage.waitForURL('**/persona/*/chat', { timeout: 15000 });
+  expect(memberPage.url()).toBe(chatUrl);
   await memberContext.close();
 
   // Stranger signs up fresh and pastes the URL.

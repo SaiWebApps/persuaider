@@ -54,6 +54,13 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
   const frameworkScores = readFrameworkScores(conversation.summary.frameworkScores);
   const deal = readDealOutcome(conversation.summary.deal);
 
+  // The counterpart's hidden limit is revealed from the learner's second completed
+  // attempt with this persona onward, so the first play is not spoiled for a replay.
+  const completedAttempts = await prisma.conversation.count({
+    where: { personaId: id, userId: session.user.id, status: 'completed' },
+  });
+  const revealLimit = completedAttempts >= 2;
+
   const fmt = (value: number | null, unit?: string) => {
     if (value === null) return '—';
     const n = value.toLocaleString('en-US');
@@ -140,7 +147,9 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
                     <dt className="text-gray-500 dark:text-gray-400">Your walk-away</dt>
                     <dd className="text-right text-gray-900 dark:text-gray-100">{fmt(issue.learnerReservation, issue.unit)}</dd>
                     <dt className="text-gray-500 dark:text-gray-400">Their hidden limit</dt>
-                    <dd className="text-right text-gray-900 dark:text-gray-100">{fmt(issue.counterpartReservation, issue.unit)}</dd>
+                    <dd className="text-right text-gray-900 dark:text-gray-100" data-testid="hidden-limit">
+                      {revealLimit ? fmt(issue.counterpartReservation, issue.unit) : 'Revealed after your second attempt'}
+                    </dd>
                     <dt className="text-gray-500 dark:text-gray-400">Your last ask / their last offer</dt>
                     <dd className="text-right text-gray-900 dark:text-gray-100">
                       {fmt(issue.learnerLastAsk, issue.unit)} / {fmt(issue.counterpartLastOffer, issue.unit)}
@@ -151,7 +160,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
                         <dd className="text-right text-gray-900 dark:text-gray-100">{issue.learnerCapture}%</dd>
                       </>
                     )}
-                    {issue.leftOnTable !== null && issue.leftOnTable > 0 && (
+                    {revealLimit && issue.leftOnTable !== null && issue.leftOnTable > 0 && (
                       <>
                         <dt className="text-gray-500 dark:text-gray-400">Left on the table</dt>
                         <dd className="text-right text-amber-700 dark:text-amber-300">{fmt(issue.leftOnTable, issue.unit)}</dd>

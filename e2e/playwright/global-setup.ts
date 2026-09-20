@@ -25,7 +25,7 @@ export default async function globalSetup() {
   // but catch the case where someone runs `npx playwright test` directly.
   if (!process.env.CLERK_SECRET_KEY) {
     console.error('');
-    console.error('ERROR: CLERK_SECRET_KEY not found in .env.local');
+    console.error('ERROR: CLERK_SECRET_KEY not set (in .env.local locally, or as a secret in CI)');
     console.error('');
     console.error('  You are running Playwright directly without prerequisites.');
     console.error('  Use "make test-e2e-pw" instead, which handles all setup.');

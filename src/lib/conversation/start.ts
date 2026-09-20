@@ -84,22 +84,43 @@ export async function startOrResumeConversation(input: StartConversationInput): 
 
   await assertCanPractice(userId, role, persona.scenarioId);
 
-  const existing = await prisma.conversation.findFirst({
-    where: { userId, personaId, scenarioId: persona.scenarioId, status: 'in_progress' },
-    include: conversationInclude,
-  });
+  const findInProgress = () =>
+    prisma.conversation.findFirst({
+      where: { userId, personaId, scenarioId: persona.scenarioId, status: 'in_progress' },
+      include: conversationInclude,
+      orderBy: { startedAt: 'desc' },
+    });
+
+  const existing = await findInProgress();
   if (existing) return { conversation: existing, created: false };
 
-  const conversation = await prisma.$transaction(async (tx) => {
+  const resolvedPersona = persona;
+  let conversation: StartedConversation;
+  try {
+    conversation = await createWithGreeting();
+  } catch (error) {
+    // The partial unique index (one in-progress conversation per user × persona)
+    // rejected a concurrent create; the other request won, so resume it.
+    if ((error as { code?: string })?.code === 'P2002') {
+      const raced = await findInProgress();
+      if (raced) return { conversation: raced, created: false };
+    }
+    throw error;
+  }
+
+  return { conversation, created: true };
+
+  async function createWithGreeting(): Promise<StartedConversation> {
+    return prisma.$transaction(async (tx) => {
     const created = await tx.conversation.create({
-      data: { userId, personaId, scenarioId: persona.scenarioId, status: 'in_progress' },
+      data: { userId, personaId, scenarioId: resolvedPersona.scenarioId, status: 'in_progress' },
       select: { id: true },
     });
     await tx.message.create({
       data: {
         conversationId: created.id,
         role: 'assistant',
-        content: persona.initialGreeting || defaultGreeting(persona.name),
+        content: resolvedPersona.initialGreeting || defaultGreeting(resolvedPersona.name),
         mood: 'neutral',
       },
     });
@@ -107,7 +128,6 @@ export async function startOrResumeConversation(input: StartConversationInput): 
       where: { id: created.id },
       include: conversationInclude,
     });
-  });
-
-  return { conversation, created: true };
+    });
+  }
 }

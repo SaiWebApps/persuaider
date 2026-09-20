@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
+import { assertCanPractice } from '@/lib/conversation/start';
+import { AuthorizationError, NotFoundError } from '@/types';
 import { ValidationError } from '@/types';
 import { parseCharacteristicsInput, serialize } from '@/lib/codec/scenario';
 
@@ -22,20 +24,20 @@ export async function GET(
 
     const persona = await prisma.persona.findUnique({
       where: { id },
-      include: {
-        scenario: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
+      select: {
+        id: true,
+        scenarioId: true,
+        name: true,
+        description: true,
+        roleType: true,
+        initialGreeting: true,
+        avatarUrl: true,
+        displayOrder: true,
+        scenario: { select: { id: true, title: true } },
+        // Only the caller's own conversations, never other users'.
         conversations: {
-          select: {
-            id: true,
-            status: true,
-            startedAt: true,
-            completedAt: true,
-          },
+          where: { userId: session.user.id },
+          select: { id: true, status: true, startedAt: true, completedAt: true },
         },
       },
     });
@@ -47,8 +49,12 @@ export async function GET(
       );
     }
 
+    await assertCanPractice(session.user.id, session.user.role, persona.scenarioId);
+
     return NextResponse.json({ persona });
   } catch (error) {
+    if (error instanceof AuthorizationError) return NextResponse.json({ error: error.message }, { status: 403 });
+    if (error instanceof NotFoundError) return NextResponse.json({ error: 'Persona not found' }, { status: 404 });
     console.error('Error fetching persona:', error);
     return NextResponse.json(
       { error: 'Failed to fetch persona' },

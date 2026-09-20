@@ -22,7 +22,14 @@ jest.mock('@/lib/db/client', () => ({
 }));
 
 import { NextRequest } from 'next/server';
+
+const mockAssertCanPractice = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/conversation/start', () => ({
+  assertCanPractice: (...args: unknown[]) => mockAssertCanPractice(...args),
+}));
+
 import { GET } from '../personas/[id]/route';
+import { AuthorizationError } from '@/types';
 
 function createParams(id: string) {
   return { params: Promise.resolve({ id }) };
@@ -92,12 +99,25 @@ describe('GET /api/personas/[id]', () => {
     await GET(req, createParams('p1'));
     expect(mockPersona.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
-        include: expect.objectContaining({
+        select: expect.objectContaining({
           scenario: expect.objectContaining({
             select: { id: true, title: true },
           }),
+          // only the caller's own conversations
+          conversations: expect.objectContaining({ where: { userId: 'u1' } }),
         }),
       })
     );
+  });
+});
+
+describe('GET /api/personas/[id] - membership', () => {
+  it('returns 403 for a signed-in user who is not a member of the scenario', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'stranger', role: 'user' } });
+    mockPersona.findUnique.mockResolvedValue({ id: 'p1', scenarioId: 's1', name: 'X', scenario: { id: 's1', title: 'T' }, conversations: [] });
+    mockAssertCanPractice.mockRejectedValueOnce(new AuthorizationError('Join this scenario before practicing with its personas'));
+    const res = await GET(new NextRequest('http://localhost/api/personas/p1'), createParams('p1'));
+    expect(res.status).toBe(403);
+    expect(mockAssertCanPractice).toHaveBeenCalledWith('stranger', 'user', 's1');
   });
 });

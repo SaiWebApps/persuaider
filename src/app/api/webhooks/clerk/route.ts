@@ -9,6 +9,7 @@ interface ClerkEmailAddress {
 
 interface ClerkUserEvent {
   id: string;
+  primary_email_address_id?: string | null;
   email_addresses: ClerkEmailAddress[];
   first_name: string | null;
   last_name: string | null;
@@ -52,9 +53,16 @@ export async function POST(request: Request) {
   }
 
   if (type === 'user.created' || type === 'user.updated') {
-    const email = data.email_addresses[0]?.email_address;
+    const addresses = (data.email_addresses ?? []) as Array<{ id?: string; email_address?: string; verification?: { status?: string } | null }>;
+    const primary = addresses.find((a) => a.id && a.id === data.primary_email_address_id) ?? addresses[0];
+    const email = primary?.email_address;
     if (!email) {
       return NextResponse.json({ error: 'No email in event' }, { status: 400 });
+    }
+    // Never link or create a database row from an unverified address: that
+    // would let anyone claim a pre-seeded (possibly admin) account by email.
+    if (primary?.verification?.status !== 'verified') {
+      return NextResponse.json({ received: true, skipped: 'email not verified' }, { status: 200 });
     }
 
     const username =

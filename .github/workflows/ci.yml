@@ -5,38 +5,81 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+  DATABASE_URL_UNPOOLED: postgresql://ci:ci@localhost:5432/ci
+
 jobs:
   fast:
-    name: typecheck, lint, unit + db integration, build
+    name: typecheck, lint, unit + db integration, migrations, build
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: ci
+        env: { POSTGRES_USER: ci, POSTGRES_PASSWORD: ci, POSTGRES_DB: ci }
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U ci"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-      DATABASE_URL_UNPOOLED: postgresql://ci:ci@localhost:5432/ci
       # Build-time placeholders. No network calls are made with these.
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktcGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA
       CLERK_SECRET_KEY: sk_test_ci_placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - run: npm ci
-      - run: npx prisma db push --skip-generate
+      # Real migrations, applied from scratch, must produce exactly the schema.
+      - run: npx prisma migrate deploy
+      - run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm test -- --ci
       - run: npm run build
+
+  e2e:
+    name: playwright (real app, real Postgres, real Clerk test instance)
+    runs-on: ubuntu-latest
+    needs: fast
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: ci, POSTGRES_PASSWORD: ci, POSTGRES_DB: ci }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Keep CI spend bounded: the e2e users get a small daily budget.
+      DEFAULT_DAILY_AI_BUDGET_USD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check secrets
+        id: secrets
+        run: |
+          if [ -z "$CLERK_SECRET_KEY" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"; echo "::warning::e2e skipped: CLERK_SECRET_KEY / ANTHROPIC_API_KEY secrets not set"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.secrets.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - if: steps.secrets.outputs.skip == 'false'
+        run: npm ci
+      - if: steps.secrets.outputs.skip == 'false'
+        run: npx prisma migrate deploy
+      - if: steps.secrets.outputs.skip == 'false'
+        run: npx playwright install --with-deps chromium
+      - if: steps.secrets.outputs.skip == 'false'
+        run: npm run build
+      - if: steps.secrets.outputs.skip == 'false'
+        run: npx playwright test --config e2e/playwright.config.ts
+        env:
+          PW_WEB_SERVER: npm start
+          CI: "true"
+      - if: always() && steps.secrets.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-results, path: test-results, if-no-files-found: ignore }

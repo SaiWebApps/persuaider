@@ -53,7 +53,7 @@ describe('getAuthSession', () => {
     // 1st: by clerkId -> none; 2nd: by email -> none; 3rd: username free
     mockFindUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     mockCurrentUser.mockResolvedValue({
-      primaryEmailAddress: { emailAddress: 'new@example.com' },
+      primaryEmailAddress: { emailAddress: 'new@example.com', verification: { status: 'verified' } },
       firstName: 'New',
       lastName: 'Person',
     });
@@ -72,7 +72,7 @@ describe('getAuthSession', () => {
     mockFindUnique
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: 'u_seed', role: 'admin', clerkId: null });
-    mockCurrentUser.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'admin@persuaider.dev' } });
+    mockCurrentUser.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'admin@persuaider.dev', verification: { status: 'verified' } } });
     mockUpdate.mockResolvedValue({ id: 'u_seed', role: 'admin' });
     const result = await getAuthSession();
     expect(mockUpdate).toHaveBeenCalledWith(
@@ -82,10 +82,33 @@ describe('getAuthSession', () => {
     expect(result).toEqual({ user: { id: 'u_seed', role: 'admin', emailVerified: true } });
   });
 
+  it('refuses to link a pre-seeded row when the primary email is not verified', async () => {
+    mockClerkAuth.mockResolvedValue({ userId: 'clerk_mallory', sessionClaims: {} });
+    mockFindUnique.mockResolvedValueOnce(null);
+    mockCurrentUser.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'admin@persuaider.dev', verification: { status: 'unverified' } } });
+    const result = await getAuthSession();
+    expect(result).toBeNull();
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('re-reads by clerkId when a concurrent first sign-in already created the row', async () => {
+    mockClerkAuth.mockResolvedValue({ userId: 'clerk_race', sessionClaims: {} });
+    mockFindUnique
+      .mockResolvedValueOnce(null) // by clerkId
+      .mockResolvedValueOnce(null) // by email
+      .mockResolvedValueOnce(null) // username free
+      .mockResolvedValueOnce({ id: 'u_race', role: 'user' }); // re-read after P2002
+    mockCurrentUser.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'race@example.com', verification: { status: 'verified' } } });
+    mockCreate.mockRejectedValue(Object.assign(new Error('unique'), { code: 'P2002' }));
+    const result = await getAuthSession();
+    expect(result).toEqual({ user: { id: 'u_race', role: 'user', emailVerified: true } });
+  });
+
   it('refuses to link when the email belongs to a different Clerk user', async () => {
     mockClerkAuth.mockResolvedValue({ userId: 'clerk_b', sessionClaims: {} });
     mockFindUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'u1', role: 'user', clerkId: 'clerk_a' });
-    mockCurrentUser.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'x@example.com' } });
+    mockCurrentUser.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'x@example.com', verification: { status: 'verified' } } });
     const result = await getAuthSession();
     expect(result).toBeNull();
     expect(mockUpdate).not.toHaveBeenCalled();

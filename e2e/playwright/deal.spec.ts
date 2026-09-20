@@ -42,9 +42,14 @@ test('summary shows a deal outcome with hidden limits and a computed score', asy
   await expect(deal).toContainText('Your target');
   await expect(deal).toContainText('$130,000');
   await expect(deal).toContainText('Their hidden limit');
-  await expect(deal).toContainText('$120,000');
-  const status = await page.locator('[data-testid="deal-status"]').textContent();
-  expect(['Deal reached', 'No deal']).toContain(status?.trim());
+  const status = (await page.locator('[data-testid="deal-status"]').textContent())?.trim();
+  expect(['Deal reached', 'No deal']).toContain(status);
+  if (status === 'Deal reached') {
+    await expect(deal).toContainText('Share of your range captured');
+    await expect(page.locator('[data-testid="deal-agreed"]').first()).toContainText('$');
+  }
+  // First completed attempt with this persona: the counterpart's limit stays hidden.
+  await expect(page.locator('[data-testid="hidden-limit"]').first()).toContainText('Revealed after your second attempt');
 
   // Overall score is present and is the weighted mean of the framework scores (30/40/30).
   const overall = Number(await page.locator('[data-testid="overall-score"]').textContent());

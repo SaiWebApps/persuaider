@@ -20,9 +20,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev',
+    command: process.env.PW_WEB_SERVER || 'npm run dev',
     port: 3000,
-    reuseExistingServer: true,
-    timeout: 30000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
 });
