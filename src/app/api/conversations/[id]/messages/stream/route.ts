@@ -5,6 +5,9 @@ import { LLMProviderFactory } from '@/lib/llm/providers/factory';
 import { buildConversationContext } from '@/lib/llm/prompts';
 import { parseMoodResponse } from '@/lib/llm/mood';
 import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
+import { assertWithinBudget, estimatedResponse, recordLlmCall } from '@/lib/llm/usage';
+import { LLM_MODELS } from '@/lib/llm/models';
+import { BudgetExceededError } from '@/types';
 
 export async function POST(
   request: NextRequest,
@@ -47,6 +50,18 @@ export async function POST(
     return new Response(JSON.stringify({ error: 'Conversation is not active' }), { status: 400 });
   }
 
+  try {
+    await assertWithinBudget(session.user.id);
+  } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return new Response(JSON.stringify({ error: error.message, code: 'budget_exceeded' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    throw error;
+  }
+
   // Save user message
   const userMessage = await prisma.message.create({
     data: { conversationId: id, role: 'user', content: content.trim() },
@@ -69,17 +84,22 @@ export async function POST(
         const chain = LLMProviderFactory.getProviderChain();
         const streamingProvider = chain.getPrimaryStreamingProvider();
 
+        const meter = { userId: session.user.id, purpose: 'turn_stream' as const, conversationId: id };
         if (streamingProvider && streamingProvider.generateStreamingResponse) {
           const gen = streamingProvider.generateStreamingResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
           for await (const chunk of gen) {
             fullContent += chunk;
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`));
           }
+          // Streams do not report token counts; record an estimate so the budget still moves.
+          const modelName = LLM_MODELS[streamingProvider.name as keyof typeof LLM_MODELS] ?? 'unknown';
+          await recordLlmCall(meter, estimatedResponse(contextMessages, fullContent, streamingProvider.name, modelName), { estimated: true });
         } else {
           // Fallback to non-streaming
           const response = await chain.generateResponse(contextMessages, { temperature: 0.8, maxTokens: 500 });
           fullContent = response.content;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: fullContent })}\n\n`));
+          await recordLlmCall(meter, response);
         }
 
         // Parse mood from full response

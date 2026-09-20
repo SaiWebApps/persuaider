@@ -11,6 +11,7 @@ interface UserRow {
   email: string;
   username: string;
   role: string;
+  dailyBudgetUsd: number | null;
   createdAt: Date;
   _count: { conversations: number; scenarioMemberships: number };
 }
@@ -24,6 +25,24 @@ export function UserTableClient({ initialUsers }: { initialUsers: UserRow[] }) {
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({});
+  const [budgetSaved, setBudgetSaved] = useState<string | null>(null);
+
+  const saveBudget = async (userId: string, raw: string) => {
+    const trimmed = raw.trim();
+    const value = trimmed === '' ? null : Number(trimmed);
+    if (value !== null && !Number.isFinite(value)) return;
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dailyBudgetUsd: value }),
+    });
+    if (res.ok) {
+      setBudgetSaved(userId);
+      setTimeout(() => setBudgetSaved((s) => (s === userId ? null : s)), 1500);
+      router.refresh();
+    }
+  };
 
   const handleCreate = async () => {
     setCreating(true);
@@ -90,6 +109,7 @@ export function UserTableClient({ initialUsers }: { initialUsers: UserRow[] }) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Scenarios</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Conversations</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Daily AI budget ($)</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
             </tr>
           </thead>
@@ -109,6 +129,22 @@ export function UserTableClient({ initialUsers }: { initialUsers: UserRow[] }) {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{user._count.scenarioMemberships}</td>
                 <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{user._count.conversations}</td>
+                <td className="px-6 py-4 text-sm">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="default"
+                    aria-label={`Daily AI budget for ${user.email}`}
+                    data-testid={`budget-${user.email}`}
+                    className="w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    value={budgetDrafts[user.id] ?? (user.dailyBudgetUsd ?? '')}
+                    onChange={(e) => setBudgetDrafts((d) => ({ ...d, [user.id]: e.target.value }))}
+                    onBlur={(e) => saveBudget(user.id, e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                  />
+                  {budgetSaved === user.id && <span className="ml-2 text-xs text-green-600">saved</span>}
+                </td>
                 <td className="px-6 py-4 text-right">
                   <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>Delete</Button>
                 </td>

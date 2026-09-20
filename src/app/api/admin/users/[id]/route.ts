@@ -47,6 +47,16 @@ export async function PATCH(
     updateData.role = body.role;
   }
 
+  if (body.dailyBudgetUsd !== undefined) {
+    if (body.dailyBudgetUsd === null) {
+      updateData.dailyBudgetUsd = null;
+    } else if (typeof body.dailyBudgetUsd === 'number' && Number.isFinite(body.dailyBudgetUsd) && body.dailyBudgetUsd >= 0 && body.dailyBudgetUsd <= 1000) {
+      updateData.dailyBudgetUsd = body.dailyBudgetUsd;
+    } else {
+      return NextResponse.json({ error: 'dailyBudgetUsd must be a number between 0 and 1000, or null for the default' }, { status: 400 });
+    }
+  }
+
   if (body.resetPassword) {
     return NextResponse.json(
       { error: 'Password reset is managed through Clerk. Use the Clerk dashboard.' },
@@ -61,7 +71,7 @@ export async function PATCH(
   const user = await prisma.user.update({
     where: { id },
     data: updateData,
-    select: { id: true, email: true, username: true, role: true },
+    select: { id: true, email: true, username: true, role: true, dailyBudgetUsd: true },
   });
 
   return NextResponse.json({ user });

@@ -12,6 +12,8 @@ export interface LLMResponse {
   };
   /** The provider that successfully generated this response */
   provider?: string;
+  /** The model that produced it, as reported by the provider */
+  model?: string;
 }
 
 export interface LLMOptions {

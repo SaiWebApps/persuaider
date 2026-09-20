@@ -317,7 +317,7 @@ describe('POST /api/webhooks/clerk', () => {
       });
     });
 
-    it('updates user found by clerkId', async () => {
+    it('updates user found by clerkId without touching the database role (DB role is the source of truth)', async () => {
       const event = userEvent('user.updated', {
         id: 'user_existing',
         email_addresses: [{ email_address: 'updated@test.com', id: 'ea_1' }],
@@ -335,8 +335,9 @@ describe('POST /api/webhooks/clerk', () => {
       expect(res.status).toBe(200);
       expect(mockUser.update).toHaveBeenCalledWith({
         where: { clerkId: 'user_existing' },
-        data: expect.objectContaining({ email: 'updated@test.com', role: 'admin' }),
+        data: expect.objectContaining({ email: 'updated@test.com' }),
       });
+      expect(mockUser.update.mock.calls[0][0].data).not.toHaveProperty('role');
     });
 
     it('links clerkId to user found by email', async () => {

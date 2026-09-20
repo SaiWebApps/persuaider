@@ -2,6 +2,7 @@ import { LLMProviderFactory } from './providers/factory';
 import type { LLMFeedback, WinningArgument } from '@/types';
 import { readEvaluationCriteria } from '@/lib/codec/scenario';
 import type { DealOutcome } from '@/lib/scoring/deal';
+import { recordLlmCall, type Meter } from './usage';
 
 interface EvaluationMessage {
   role: string;
@@ -185,7 +186,8 @@ export function parseEvaluationResponse(raw: string): EvaluationResult {
   const frameworkScores: Record<string, number> = {};
   if (rawScores && typeof rawScores === 'object') {
     for (const [key, value] of Object.entries(rawScores)) {
-      frameworkScores[key] = clamp(toNumber(value, 50), 0, 100);
+      const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+      if (Number.isFinite(n)) frameworkScores[key] = clamp(n, 0, 100);
     }
   }
 
@@ -196,7 +198,8 @@ export async function evaluateConversation(
   messages: EvaluationMessage[],
   persona: EvaluationPersona,
   scenario: EvaluationScenario,
-  deal?: DealOutcome
+  deal?: DealOutcome,
+  meter?: Meter
 ): Promise<EvaluationResult> {
   const emptyFallback: EvaluationResult = {
     overallScore: 0,
@@ -230,6 +233,7 @@ export async function evaluateConversation(
       { temperature: 0.3, maxTokens: 2000 }
     );
 
+    if (meter) await recordLlmCall(meter, response);
     return parseEvaluationResponse(response.content);
   } catch (error) {
     console.error('Evaluation failed, returning fallback:', error);

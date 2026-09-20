@@ -38,6 +38,7 @@ const publishedPublicScenario = {
   winCondition: 'win',
   tags: '["negotiation","sales"]',
   contextNotes: 'notes',
+  issues: '[{"name":"Price"}]',
   status: 'published',
   visibility: 'public',
   accessCode: null,
@@ -246,6 +247,7 @@ describe('POST /api/scenarios/[id]/fork', () => {
     expect(createCall.data.evaluationCriteria).toBe('criteria');
     expect(createCall.data.winCondition).toBe('win');
     expect(createCall.data.contextNotes).toBe('notes');
+    expect(createCall.data.issues).toBe(publishedPublicScenario.issues);
   });
 
   it('fork sets visibility to public and status to published', async () => {

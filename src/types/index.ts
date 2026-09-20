@@ -202,6 +202,13 @@ export class NotFoundError extends Error {
   }
 }
 
+export class BudgetExceededError extends Error {
+  constructor(public spentUsd: number, public budgetUsd: number) {
+    super(`Daily AI budget reached ($${spentUsd.toFixed(2)} of $${budgetUsd.toFixed(2)}). It resets at midnight UTC.`);
+    this.name = 'BudgetExceededError';
+  }
+}
+
 export class ConflictError extends Error {
   constructor(message: string) {
     super(message);

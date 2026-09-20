@@ -8,6 +8,17 @@
  * completed conversation, and LLM failure fallback.
  */
 
+// Budget metering is tested in src/lib/llm/__tests__/usage.test.ts; routes get a permissive fake.
+jest.mock('@/lib/llm/usage', () => ({
+  assertWithinBudget: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  recordLlmCall: jest.fn().mockResolvedValue(undefined),
+  getDailyUsage: jest.fn().mockResolvedValue({ spentUsd: 0, calls: 0, budgetUsd: 2 }),
+  estimatedResponse: (_m: unknown, content: string, provider: string, model: string) => ({
+    content, provider, model, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+  }),
+}));
+
+
 const mockAuthFn = jest.fn();
 jest.mock('@/lib/auth', () => ({
   auth: () => mockAuthFn(),
@@ -44,10 +55,13 @@ jest.mock('@/lib/llm/mood', () => ({
 }));
 
 jest.mock('@/types', () => ({
+  ...jest.requireActual('@/types'),
   DEFAULT_MOOD: 'neutral',
 }));
 
 import { POST } from '../conversations/[id]/messages/route';
+import { assertWithinBudget } from '@/lib/llm/usage';
+import { BudgetExceededError } from '@/types';
 import { NextRequest } from 'next/server';
 
 function createParams(id: string) {
@@ -258,5 +272,25 @@ describe('POST /api/conversations/[id]/messages', () => {
         data: expect.objectContaining({ content: 'hello' }),
       })
     );
+  });
+});
+
+describe('POST /api/conversations/[id]/messages - budget', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('returns 429 with a plain message when the daily budget is reached, before any model call', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'user-1', role: 'user' } });
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
+    mockConversation.findUnique.mockResolvedValue({ id: 'c1', userId: 'user-1', status: 'in_progress', persona: {}, scenario: {}, messages: [] });
+    (assertWithinBudget as jest.Mock).mockRejectedValueOnce(new BudgetExceededError(2.01, 2));
+    const req = new NextRequest('http://localhost:3000/api/conversations/c1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: 'hi' }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: 'c1' }) });
+    expect(res.status).toBe(429);
+    const data = await res.json();
+    expect(data.code).toBe('budget_exceeded');
+    expect(data.error).toContain('Daily AI budget reached');
+    expect(mockMessage.create).not.toHaveBeenCalled();
   });
 });

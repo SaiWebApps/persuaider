@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { generateScenarioFromDocument } from '@/lib/llm/generation';
+import { assertWithinBudget } from '@/lib/llm/usage';
+import { BudgetExceededError } from '@/types';
 import { isSupportedMimeType } from '@/lib/documents/extract';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -51,9 +53,13 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const scenario = await generateScenarioFromDocument(buffer, file.type, file.name);
+    await assertWithinBudget(session.user.id);
+    const scenario = await generateScenarioFromDocument(buffer, file.type, file.name, { userId: session.user.id, purpose: 'generation' });
     return NextResponse.json({ scenario }, { status: 200 });
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return NextResponse.json({ error: error.message, code: 'budget_exceeded' }, { status: 429 });
+    }
     console.error('Document scenario generation failed:', error);
 
     const message = error instanceof Error ? error.message : '';

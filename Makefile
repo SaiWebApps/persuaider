@@ -176,13 +176,10 @@ ensure-deps:
 
 # Ensure database exists and is ready
 ensure-db: ensure-deps init-env
-	@NEEDS_SEED=0; \
-	if [ ! -d node_modules/@prisma/client ]; then \
-		echo "🗄️  Prisma client not found, setting up database..."; \
-		$(MAKE) db-setup 2>&1 | grep -v "make\["; \
-		NEEDS_SEED=1; \
-	fi; \
-	if [ "$$NEEDS_SEED" = "1" ]; then \
+	@env $$(grep -E '^[A-Za-z_][A-Za-z_0-9]*=' .env.local | xargs) npx prisma db push --skip-generate >/dev/null 2>&1 \
+		|| (echo "❌ Could not reach the database in DATABASE_URL. Run 'make db-up' for a local Postgres." && exit 1)
+	@if [ "$$(env $$(grep -E '^[A-Za-z_][A-Za-z_0-9]*=' .env.local | xargs) npx tsx -e "import {PrismaClient} from '@prisma/client'; new PrismaClient().user.count().then(n=>{console.log(n);process.exit(0)})" 2>/dev/null)" = "0" ]; then \
+		echo "🌱 Empty database, seeding demo scenarios..."; \
 		$(MAKE) db-seed 2>&1 | grep -v "make\["; \
 	fi
 

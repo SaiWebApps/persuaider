@@ -124,36 +124,23 @@ describe('AnthropicProvider', () => {
       expect(result.content).toBe('');
     });
 
-    it('passes temperature and maxTokens options', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: 'response' }],
-        usage: { input_tokens: 5, output_tokens: 5 },
-      });
+    const okResponse = { content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 1, output_tokens: 1 } };
 
-      await provider.generateResponse(messages, { temperature: 0.5, maxTokens: 1000 });
-
+    it('passes temperature and maxTokens for models that support temperature', async () => {
+      mockCreate.mockResolvedValue(okResponse);
+      await provider.generateResponse(messages, { model: 'claude-sonnet-4-5-20250929', temperature: 0.5, maxTokens: 1000 });
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          temperature: 0.5,
-          max_tokens: 1000,
-        })
+        expect.objectContaining({ model: 'claude-sonnet-4-5-20250929', temperature: 0.5, max_tokens: 1000 })
       );
     });
 
-    it('uses default temperature 0.8 and maxTokens 500', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: 'response' }],
-        usage: { input_tokens: 5, output_tokens: 5 },
-      });
-
-      await provider.generateResponse(messages);
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          temperature: 0.8,
-          max_tokens: 500,
-        })
-      );
+    it('omits temperature for Claude 5 models, which reject it', async () => {
+      mockCreate.mockResolvedValue(okResponse);
+      await provider.generateResponse(messages, { model: 'claude-sonnet-5', temperature: 0.5 });
+      const call = mockCreate.mock.calls[0][0];
+      expect(call.model).toBe('claude-sonnet-5');
+      expect(call).not.toHaveProperty('temperature');
+      expect(call.max_tokens).toBe(500);
     });
 
     it('throws classified error on API failure', async () => {

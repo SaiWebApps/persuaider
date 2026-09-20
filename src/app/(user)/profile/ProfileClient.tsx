@@ -13,9 +13,10 @@ interface ProfileClientProps {
     averageScore: number;
     completionRate: number;
   };
+  usage: { spentUsd: number; calls: number; budgetUsd: number };
 }
 
-export function ProfileClient({ initialUsername, email, stats }: ProfileClientProps) {
+export function ProfileClient({ initialUsername, email, stats, usage }: ProfileClientProps) {
   const [username, setUsername] = useState(initialUsername);
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState(initialUsername);
@@ -144,6 +145,10 @@ export function ProfileClient({ initialUsername, email, stats }: ProfileClientPr
               <p className="text-xs text-gray-500 dark:text-gray-400">Completion Rate</p>
             </div>
           </div>
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400" data-testid="ai-usage">
+            AI usage today: <span className="font-medium text-gray-900 dark:text-gray-100">${usage.spentUsd < 0.01 && usage.spentUsd > 0 ? usage.spentUsd.toFixed(4) : usage.spentUsd.toFixed(2)}</span> of ${usage.budgetUsd.toFixed(2)}
+            {' '}({usage.calls} {usage.calls === 1 ? 'call' : 'calls'}). Resets at midnight UTC.
+          </p>
         </div>
       </main>
     </div>

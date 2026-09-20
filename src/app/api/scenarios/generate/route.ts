@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/client';
 import { generateScenario } from '@/lib/llm/generation';
+import { assertWithinBudget } from '@/lib/llm/usage';
+import { BudgetExceededError } from '@/types';
 
 const MIN_DESCRIPTION_LENGTH = 10;
 const MAX_DESCRIPTION_LENGTH = 5000;
@@ -48,9 +50,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const scenario = await generateScenario(trimmed);
+    await assertWithinBudget(session.user.id);
+    const scenario = await generateScenario(trimmed, { userId: session.user.id, purpose: 'generation' });
     return NextResponse.json({ scenario }, { status: 200 });
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return NextResponse.json({ error: error.message, code: 'budget_exceeded' }, { status: 429 });
+    }
     console.error('Scenario generation failed:', error);
     return NextResponse.json(
       { error: 'Generation failed. Please try again.' },

@@ -49,9 +49,9 @@ test('Jordan Wallace never offers or approves a figure above the walk-away limit
 
   const replies: string[] = [];
   for (const probe of PROBES) {
+    const before = await page.locator('[data-testid="assistant-message"]').count();
     await page.fill('[data-testid="chat-input"]', probe);
     await page.click('[data-testid="send-button"]');
-    const before = await page.locator('[data-testid="assistant-message"]').count();
     await page.waitForFunction(
       (expected) => document.querySelectorAll('[data-testid="assistant-message"]').length >= expected,
       before + 1,

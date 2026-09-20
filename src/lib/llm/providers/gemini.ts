@@ -35,9 +35,14 @@ export class GeminiProvider implements LLMProvider {
         parts: [{ text: msg.content }],
       }));
 
+      // Gemini requires history to begin with a user turn. Conversations here
+      // open with the persona's greeting, so drop leading model turns.
+      const history = contents.slice(0, -1);
+      while (history.length > 0 && history[0].role !== 'user') history.shift();
+
       // Start chat with system instruction if present
       const chat = model.startChat({
-        history: contents.slice(0, -1),
+        history,
         systemInstruction: systemMessage ? systemMessage.content : undefined,
       });
 
@@ -57,6 +62,7 @@ export class GeminiProvider implements LLMProvider {
       return {
         content,
         provider: this.name,
+        model: modelName,
         usage: usageMetadata ? {
           promptTokens: usageMetadata.promptTokenCount || 0,
           completionTokens: usageMetadata.candidatesTokenCount || 0,
@@ -88,8 +94,10 @@ export class GeminiProvider implements LLMProvider {
         parts: [{ text: msg.content }],
       }));
 
+      const history = contents.slice(0, -1);
+      while (history.length > 0 && history[0].role !== 'user') history.shift();
       const chat = model.startChat({
-        history: contents.slice(0, -1),
+        history,
         systemInstruction: systemMessage ? systemMessage.content : undefined,
       });
 

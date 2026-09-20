@@ -67,15 +67,17 @@ export async function POST(request: Request) {
     const existingByEmail = await prisma.user.findUnique({ where: { email } });
     const existingByClerkId = await prisma.user.findUnique({ where: { clerkId: data.id } });
 
+    // The database role column is the single source of truth for authorization.
+    // Updates never touch it; Clerk metadata only seeds the role on first creation.
     if (existingByClerkId) {
       await prisma.user.update({
         where: { clerkId: data.id },
-        data: { email, role, emailVerified: new Date() },
+        data: { email, emailVerified: new Date() },
       });
     } else if (existingByEmail) {
       await prisma.user.update({
         where: { email },
-        data: { clerkId: data.id, role, emailVerified: new Date() },
+        data: { clerkId: data.id, emailVerified: new Date() },
       });
     } else {
       let uniqueUsername = username;

@@ -36,6 +36,7 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [showAbortModal, setShowAbortModal] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [aborting, setAborting] = useState(false);
@@ -66,6 +67,7 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
     };
     setMessages((prev) => [...prev, tempUserMsg]);
     setIsWaitingForResponse(true);
+    setSendError(null);
 
     try {
       // Try streaming first
@@ -74,6 +76,13 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       });
+
+      if (streamRes.status === 429) {
+        const data = await streamRes.json().catch(() => ({}));
+        setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+        setSendError(data.error || 'Daily AI budget reached.');
+        return;
+      }
 
       if (streamRes.ok && streamRes.body) {
         // Add a streaming assistant message placeholder
@@ -155,7 +164,7 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id && !m.id.startsWith('streaming-')));
-      alert('Failed to send message. Please try again.');
+      setSendError('Failed to send message. Please try again.');
     } finally {
       setIsWaitingForResponse(false);
     }
@@ -343,6 +352,15 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
       </div>
 
       {/* Input Area */}
+      {sendError && (
+        <div
+          role="alert"
+          data-testid="chat-error"
+          className="mx-4 mb-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          {sendError}
+        </div>
+      )}
       <ChatInput onSendMessage={handleSendMessage} disabled={isWaitingForResponse} />
 
       {/* End Negotiation Modal */}

@@ -1,4 +1,5 @@
 import { LLMProviderFactory } from './providers/factory';
+import { recordLlmCall, type Meter } from './usage';
 import { extractDocumentContentFromBuffer } from '@/lib/documents/extract';
 import type { GeneratedScenario, GeneratedPersona, PersonaCharacteristics, EvaluationCriteria, WinCondition, GeneratedRole } from '@/types';
 
@@ -212,7 +213,7 @@ export function parseGenerationResponse(raw: string): GeneratedScenario | null {
 /**
  * Generates a complete scenario from a natural language description.
  */
-export async function generateScenario(description: string): Promise<GeneratedScenario> {
+export async function generateScenario(description: string, meter?: Meter): Promise<GeneratedScenario> {
   const prompt = buildGenerationPrompt(description);
   const chain = LLMProviderFactory.getProviderChain();
 
@@ -223,6 +224,7 @@ export async function generateScenario(description: string): Promise<GeneratedSc
     { temperature: 0.7, maxTokens: 4000 }
   );
 
+  if (meter) await recordLlmCall(meter, response);
   const scenario = parseGenerationResponse(response.content);
   if (!scenario) {
     throw new Error('Failed to parse LLM response into a valid scenario');
@@ -238,7 +240,8 @@ export async function generateScenario(description: string): Promise<GeneratedSc
 export async function generateScenarioFromDocument(
   buffer: Buffer,
   mimeType: string,
-  filename: string
+  filename: string,
+  meter?: Meter
 ): Promise<GeneratedScenario> {
   const extracted = await extractDocumentContentFromBuffer(buffer, mimeType, filename);
 
@@ -266,6 +269,7 @@ export async function generateScenarioFromDocument(
     { temperature: 0.7, maxTokens: 4000 }
   );
 
+  if (meter) await recordLlmCall(meter, response);
   const scenario = parseGenerationResponse(response.content);
   if (!scenario) {
     throw new Error('Failed to parse LLM response into a valid scenario');

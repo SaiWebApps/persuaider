@@ -13,10 +13,10 @@
  */
 export const LLM_MODELS = {
   /** Google Gemini model - backup provider */
-  gemini: 'gemini-2.0-flash',
+  gemini: 'gemini-3.6-flash',
 
   /** Anthropic Claude model - primary provider */
-  anthropic: 'claude-sonnet-4-5-20250929',
+  anthropic: 'claude-sonnet-5',
 
   /** OpenAI ChatGPT model - final fallback */
   openai: 'gpt-5.2-instant',
