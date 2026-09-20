@@ -14,28 +14,97 @@ export interface AuthSession {
   };
 }
 
+/**
+ * Resolve the signed-in Clerk user to the app's database user.
+ *
+ * The database `role` column is the single source of truth for authorization.
+ * If Clerk knows the user but the database does not (the webhook has not run,
+ * or this is a local environment with no webhook), the row is created here on
+ * first sight, or linked by email to a pre-seeded row. This makes the webhook
+ * an optimization rather than a login prerequisite.
+ */
 export async function getAuthSession(): Promise<AuthSession | null> {
+  let clerkUserId: string | null | undefined;
   try {
-    const { userId, sessionClaims } = await auth();
-    if (!userId) return null;
+    const { userId } = await auth();
+    clerkUserId = userId;
+  } catch (error) {
+    console.error('[auth] Clerk auth() failed', error);
+    return null;
+  }
+  if (!clerkUserId) return null;
 
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
+  try {
+    let user = await prisma.user.findUnique({
+      where: { clerkId: clerkUserId },
       select: { id: true, role: true },
     });
 
-    if (!user) return null;
+    if (!user) {
+      user = await provisionUser(clerkUserId);
+      if (!user) return null;
+    }
 
     return {
       user: {
         id: user.id,
-        role: (sessionClaims?.metadata as { role?: string })?.role || user.role,
+        role: user.role,
         emailVerified: true,
       },
     };
-  } catch {
+  } catch (error) {
+    console.error('[auth] failed to resolve database user for Clerk id', clerkUserId, error);
     return null;
   }
+}
+
+async function provisionUser(clerkUserId: string): Promise<{ id: string; role: string } | null> {
+  const clerkUser = await currentUser();
+  const email = clerkUser?.primaryEmailAddress?.emailAddress ?? clerkUser?.emailAddresses?.[0]?.emailAddress;
+  if (!email) {
+    console.error('[auth] Clerk user has no email address; cannot provision', clerkUserId);
+    return null;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, clerkId: true } });
+  if (existing) {
+    if (existing.clerkId && existing.clerkId !== clerkUserId) {
+      console.error('[auth] email already linked to a different Clerk user', email);
+      return null;
+    }
+    const linked = await prisma.user.update({
+      where: { id: existing.id },
+      data: { clerkId: clerkUserId, emailVerified: new Date() },
+      select: { id: true, role: true },
+    });
+    console.info('[auth] linked existing user to Clerk', email);
+    return linked;
+  }
+
+  const baseName =
+    clerkUser?.username ||
+    [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(' ') ||
+    email.split('@')[0];
+
+  const created = await prisma.user.create({
+    data: {
+      clerkId: clerkUserId,
+      email,
+      username: await uniqueUsername(baseName),
+      role: 'user',
+      emailVerified: new Date(),
+    },
+    select: { id: true, role: true },
+  });
+  console.info('[auth] provisioned new user from Clerk', email);
+  return created;
+}
+
+async function uniqueUsername(base: string): Promise<string> {
+  const clean = base.trim().slice(0, 40) || 'user';
+  const taken = await prisma.user.findUnique({ where: { username: clean }, select: { id: true } });
+  if (!taken) return clean;
+  return `${clean}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export async function signOut(): Promise<void> {

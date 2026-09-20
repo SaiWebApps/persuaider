@@ -14,6 +14,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     headless: true,
+    // Optional: point at a specific browser binary (used locally when the default download is unavailable).
+    launchOptions: process.env.PW_EXECUTABLE_PATH ? { executablePath: process.env.PW_EXECUTABLE_PATH } : undefined,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },

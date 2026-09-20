@@ -1,4 +1,4 @@
-.PHONY: help setup dev build test test-unit test-e2e-pw test-e2e-pw-visible test-smoke test-health test-auth-health test-watch test-coverage lint format format-check typecheck deploy deploy-preview db-setup db-generate db-migrate db-push db-seed db-reset db-studio clean clean-db ci pre-commit install ensure-deps ensure-env ensure-auth ensure-vercel ensure-db ensure-playwright ensure-e2e-env init-env clerk-setup
+.PHONY: help setup dev build test test-all test-unit test-e2e test-e2e-visible db-up db-down promote-admin test-health test-auth-health test-watch test-coverage lint format format-check typecheck deploy deploy-preview db-setup db-generate db-migrate db-push db-seed db-reset db-studio clean clean-db ci pre-commit install ensure-deps ensure-env ensure-auth ensure-vercel ensure-db ensure-playwright ensure-e2e-env init-env clerk-setup
 
 # Default target
 help:
@@ -16,9 +16,9 @@ help:
 	@echo "    make typecheck       TypeScript type check"
 	@echo ""
 	@echo "  Testing:"
-	@echo "    make test            Full suite (unit + E2E)"
-	@echo "    make test-unit       Unit tests only (fast)"
-	@echo "    make test-smoke      Production smoke test"
+	@echo "    make test            Unit tests (fast, offline)"
+	@echo "    make test-e2e        Playwright against a live dev server"
+	@echo "    make promote-admin EMAIL=…   Make a signed-up user an admin"
 	@echo ""
 	@echo "  Database:"
 	@echo "    make db-studio       Open Prisma GUI"
@@ -41,15 +41,16 @@ help:
 ensure-env:
 	@if [ ! -f .env.local ]; then \
 		echo "📝 Creating .env.local..."; \
-		echo "# Database (SQLite for local development)" > .env.local; \
-		echo "DATABASE_URL=\"file:./dev.db\"" >> .env.local; \
+		echo "# Database (Postgres; 'make db-up' starts one in Docker)" > .env.local; \
+		echo "DATABASE_URL=\"postgresql://persuaider:persuaider@localhost:5432/persuaider\"" >> .env.local; \
+		echo "DATABASE_URL_UNPOOLED=\"postgresql://persuaider:persuaider@localhost:5432/persuaider\"" >> .env.local; \
 		echo "" >> .env.local; \
-		echo "# Authentication (Clerk)" >> .env.local; \
+		echo "# Authentication (Clerk). Empty = keyless mode; the app prints a claim link." >> .env.local; \
 		echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=\"\"" >> .env.local; \
 		echo "CLERK_SECRET_KEY=\"\"" >> .env.local; \
 		echo "" >> .env.local; \
 		echo "# LLM Providers (at least one required)" >> .env.local; \
-		echo "GEMINI_API_KEY=\"\"" >> .env.local; \
+		echo "GOOGLE_GEMINI_API_KEY=\"\"" >> .env.local; \
 		echo "ANTHROPIC_API_KEY=\"\"" >> .env.local; \
 		echo "OPENAI_API_KEY=\"\"" >> .env.local; \
 		echo "" >> .env.local; \
@@ -66,70 +67,26 @@ install:
 	npx playwright install chromium
 	@echo "✅ Dependencies installed"
 
-# Ensure Clerk auth keys are configured (runs setup inline if missing)
+# Clerk keys are optional locally: with none set, @clerk/nextjs runs in keyless
+# mode and prints a claim link. This target only reports; it never blocks.
 ensure-auth: ensure-env
-	@CLERK_KEY=$$(grep "^CLERK_SECRET_KEY=" .env.local 2>/dev/null | cut -d'"' -f2); \
-	if [ -n "$$CLERK_KEY" ] && [ "$$CLERK_KEY" != "" ]; then \
-		exit 0; \
-	fi; \
-	echo "🔐 Clerk keys missing. Setting up authentication..."; \
-	echo ""; \
-	if ! command -v vercel >/dev/null 2>&1; then \
-		echo "📦 Installing Vercel CLI..."; \
-		npm install -g vercel; \
-	fi; \
-	if ! vercel whoami >/dev/null 2>&1; then \
-		echo "🔑 Logging in to Vercel..."; \
-		vercel login; \
+	@if grep -qE '^CLERK_SECRET_KEY=["'"'"']?sk_' .env.local 2>/dev/null; then \
+		echo "✓ Clerk keys present"; \
 	else \
-		echo "✓ Logged in as $$(vercel whoami)"; \
-	fi; \
-	if [ ! -f .vercel/project.json ]; then \
-		echo "🔗 Linking project to Vercel..."; \
-		vercel link; \
-	else \
-		echo "✓ Project already linked"; \
-	fi; \
-	echo ""; \
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
-	echo "  ACTION REQUIRED: Add Clerk in Vercel Dashboard"; \
-	echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"; \
-	echo ""; \
-	echo "  1. Open: https://vercel.com/marketplace/clerk"; \
-	echo "  2. Click 'Add Integration'"; \
-	echo "  3. Select your Vercel team/account"; \
-	echo "  4. Select this project and complete setup"; \
-	echo ""; \
-	read -p "  Press Enter once Clerk is added in the dashboard... " _; \
-	echo "📥 Pulling environment variables from Vercel..."; \
-	vercel env pull .env.vercel.tmp --yes || { rm -f .env.vercel.tmp; echo "❌ Failed to pull env vars"; exit 1; }; \
-	while IFS= read -r line; do \
-		case "$$line" in \
-			\#*|"") continue ;; \
-		esac; \
-		key=$${line%%=*}; \
-		if ! grep -q "^$$key=" .env.local 2>/dev/null; then \
-			echo "$$line" >> .env.local; \
-			echo "  + Added $$key"; \
-		fi; \
-	done < .env.vercel.tmp; \
-	rm -f .env.vercel.tmp; \
-	echo ""; \
-	if grep -q "^CLERK_SECRET_KEY=\"[^\"]\+\"" .env.local && grep -q "^NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=\"[^\"]\+\"" .env.local; then \
-		echo "✅ Clerk configured successfully!"; \
-	else \
-		echo "❌ Clerk keys not found after pull."; \
-		echo "   Verify Clerk was added to this project in the Vercel dashboard."; \
-		exit 1; \
+		echo "ℹ️  No Clerk keys in .env.local — running in Clerk keyless mode."; \
+		echo "   To use a real Clerk instance, paste NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY into .env.local."; \
 	fi
 
-# Explicit entry point (same as ensure-auth)
-clerk-setup: ensure-auth
+# Pull Clerk keys from the linked Vercel project (optional, interactive)
+clerk-setup: ensure-vercel
+	@vercel env pull .env.vercel.tmp --yes && \
+	grep -E '^(NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY|CLERK_SECRET_KEY|CLERK_WEBHOOK_SECRET)=' .env.vercel.tmp >> .env.local; \
+	rm -f .env.vercel.tmp; echo "✓ Clerk keys appended to .env.local"
 
 # Complete setup: zero to running in one command
-setup: ensure-deps ensure-env ensure-auth ensure-db
+setup: ensure-deps ensure-env ensure-auth db-up ensure-db
 	@# Prompt for LLM key if none configured
-	@if grep -qE '^(GEMINI_API_KEY|ANTHROPIC_API_KEY|OPENAI_API_KEY)="[^"]+"' .env.local 2>/dev/null; then \
+	@if grep -qE '^(GOOGLE_GEMINI_API_KEY|ANTHROPIC_API_KEY|OPENAI_API_KEY)="[^"]+"' .env.local 2>/dev/null; then \
 		echo "✓ LLM provider configured"; \
 	else \
 		echo ""; \
@@ -139,8 +96,8 @@ setup: ensure-deps ensure-env ensure-auth ensure-db
 		echo ""; \
 		read -p "  Gemini API Key (recommended): " GKEY; \
 		if [ -n "$$GKEY" ]; then \
-			sed -i '' "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=\"$$GKEY\"|" .env.local; \
-			echo "  ✓ Set GEMINI_API_KEY"; \
+			sed -i '' "s|^GOOGLE_GEMINI_API_KEY=.*|GOOGLE_GEMINI_API_KEY=\"$$GKEY\"|" .env.local; \
+			echo "  ✓ Set GOOGLE_GEMINI_API_KEY"; \
 		else \
 			read -p "  Anthropic API Key: " AKEY; \
 			if [ -n "$$AKEY" ]; then \
@@ -225,18 +182,17 @@ ensure-db: ensure-deps init-env
 		$(MAKE) db-setup 2>&1 | grep -v "make\["; \
 		NEEDS_SEED=1; \
 	fi; \
-	DB_URL=$$(grep "^DATABASE_URL=" .env.local 2>/dev/null | cut -d'"' -f2); \
-	if echo "$$DB_URL" | grep -q "file:"; then \
-		DB_FILE=$$(echo "$$DB_URL" | sed 's/file://'); \
-		if [ ! -f "prisma/$$DB_FILE" ] && [ ! -f "$$DB_FILE" ]; then \
-			echo "🗄️  Database file not found, setting up..."; \
-			$(MAKE) db-setup 2>&1 | grep -v "make\["; \
-			NEEDS_SEED=1; \
-		fi; \
-	fi; \
 	if [ "$$NEEDS_SEED" = "1" ]; then \
 		$(MAKE) db-seed 2>&1 | grep -v "make\["; \
 	fi
+
+# Start a local Postgres in Docker matching the default DATABASE_URL
+db-up:
+	@docker compose up -d db
+	@echo "✓ Postgres on localhost:5432 (user/pass/db: persuaider)"
+
+db-down:
+	@docker compose down
 
 # Ensure Playwright browsers are installed (auto-installs if missing)
 ensure-playwright: ensure-deps
@@ -270,7 +226,7 @@ dev: ensure-deps ensure-env ensure-auth ensure-db
 	npm run dev
 
 # Build for production (auto-setup if needed)
-build: ensure-deps ensure-env ensure-auth
+build: ensure-deps ensure-env
 	@echo "🏗️  Building for production..."
 	npx prisma generate
 	npm run build
@@ -281,17 +237,12 @@ start:
 	@echo "🚀 Starting production server..."
 	npm start
 
-# Run ALL tests (unit + Playwright E2E)
-test: ensure-deps ensure-env ensure-auth ensure-db ensure-e2e-env
-	@echo "Running ALL tests (unit + Playwright E2E)..."
-	@echo ""
-	@echo "Step 1/2: Unit + integration tests (Jest)..."
-	@npm test || exit 1
-	@echo ""
-	@echo "Step 2/2: Playwright E2E tests..."
-	npx playwright test --config e2e/playwright.config.ts
-	@echo ""
-	@echo "ALL tests passed (unit + Playwright E2E)"
+# Unit tests. No network, no database, no keys.
+test: ensure-deps
+	npm test
+
+# Everything: unit, then Playwright against a live dev server (needs Clerk + DB + one LLM key)
+test-all: test test-e2e
 
 
 # Run unit tests only (fast, no server needed)
@@ -300,21 +251,14 @@ test-unit: ensure-deps
 	npm test
 	@echo "✅ Unit tests complete"
 
-# Run production smoke test against live URL
-test-smoke:
-	@echo "🔥 Running production smoke test..."
-	PRODUCTION_URL="https://persuaider.vercel.app" npx tsx e2e/smoke/production.ts
-	@echo "✅ Smoke test complete"
-
-
 # Run Playwright functional tests (auto-starts dev server)
-test-e2e-pw: ensure-deps init-env ensure-db ensure-e2e-env
+test-e2e: ensure-deps init-env ensure-db ensure-e2e-env
 	@echo "🧪 Running Playwright functional tests..."
 	npx playwright test --config e2e/playwright.config.ts
 	@echo "✅ Playwright tests complete"
 
 # Run Playwright tests with visible browser (for debugging)
-test-e2e-pw-visible: ensure-deps init-env ensure-db ensure-e2e-env
+test-e2e-visible: ensure-deps init-env ensure-db ensure-e2e-env
 	@echo "🧪 Running Playwright tests (visible browser)..."
 	npx playwright test --config e2e/playwright.config.ts --headed
 	@echo "✅ Playwright tests complete"
@@ -355,14 +299,11 @@ lint: ensure-deps
 
 # Format code
 format: ensure-deps
-	@echo "💅 Formatting code..."
-	npm run format
-	@echo "✅ Code formatted"
+	npx prettier --write "src/**/*.{ts,tsx}" "e2e/**/*.ts" "scripts/**/*.ts"
 
 # Check code formatting
 format-check: ensure-deps
-	@echo "🔍 Checking code formatting..."
-	npm run format:check
+	npx prettier --check "src/**/*.{ts,tsx}" "e2e/**/*.ts" "scripts/**/*.ts"
 
 # Deploy to Vercel production
 deploy: build ensure-vercel
@@ -393,9 +334,13 @@ clean-db:
 	rm -rf prisma/dev.db-journal
 	@echo "✅ Database cleaned"
 
-# Full CI workflow
-ci: ensure-deps ensure-env lint test build
+# What GitHub Actions runs on every push. No secrets, no network.
+ci: ensure-deps typecheck lint test build
 	@echo "✅ CI checks passed"
+
+# Promote a user to admin by email: make promote-admin EMAIL=you@example.com
+promote-admin: ensure-deps init-env
+	@env $$(grep -E '^[A-Za-z_][A-Za-z_0-9]*=' .env.local | xargs) npx tsx scripts/promote-admin.ts "$(EMAIL)" $(or $(ROLE),admin)
 
 # Pre-commit checks (fast - unit tests only)
 pre-commit: ensure-deps format lint test-unit

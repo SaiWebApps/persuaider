@@ -1,8 +1,11 @@
-import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { checkApiRateLimit } from '@/lib/ratelimit';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/persona(.*)']);
-const isAdminRoute = createRouteMatcher(['/admin(.*)']);
+// Signed-in required. Admin role is enforced by the admin layout and by
+// requireAdmin() in API routes, both of which read the database role — the
+// single source of truth. The middleware deliberately does not consult Clerk
+// metadata, so there is one place a role can come from.
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/persona(.*)', '/admin(.*)']);
 const isAuthPage = createRouteMatcher(['/login(.*)', '/register(.*)', '/forgot-password(.*)', '/reset-password(.*)', '/verify-email(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -20,24 +23,7 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  if (isAdminRoute(req)) {
-    const { userId, sessionClaims } = await auth.protect();
-    let role = (sessionClaims?.metadata as { role?: string })?.role;
-    // The Clerk session token doesn't include public_metadata by default, so the
-    // role claim may be absent. Fall back to the Backend API to resolve the role.
-    if (role !== 'admin' && userId) {
-      try {
-        const client = await clerkClient();
-        const user = await client.users.getUser(userId);
-        role = (user.publicMetadata as { role?: string })?.role;
-      } catch {
-        role = undefined;
-      }
-    }
-    if (role !== 'admin') {
-      return Response.redirect(new URL('/dashboard', req.url));
-    }
-  } else if (isProtectedRoute(req)) {
+  if (isProtectedRoute(req)) {
     await auth.protect();
   } else if (isAuthPage(req)) {
     const { userId } = await auth();

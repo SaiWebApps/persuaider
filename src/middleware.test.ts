@@ -64,56 +64,14 @@ describe('Middleware route protection', () => {
       expect(result).toBeUndefined();
     });
 
-    it('redirects to /dashboard when user has non-admin role', async () => {
-      mockProtect.mockResolvedValue({
-        sessionClaims: { metadata: { role: 'user' } },
-      });
+    it('does not redirect on role: admin role is enforced by the admin layout and API routes, not here', async () => {
+      mockProtect.mockResolvedValue({ sessionClaims: { metadata: { role: 'user' } } });
 
       const req = createRequest('/admin/analytics');
       const result = await middleware(req);
 
       expect(mockProtect).toHaveBeenCalled();
-      expect(result).toBeInstanceOf(Response);
-      expect(result!.status).toBe(302);
-      expect(new URL(result!.headers.get('location')!).pathname).toBe('/dashboard');
-    });
-
-    it('redirects to /dashboard when metadata is missing entirely', async () => {
-      mockProtect.mockResolvedValue({
-        sessionClaims: {},
-      });
-
-      const req = createRequest('/admin/settings');
-      const result = await middleware(req);
-
-      expect(result).toBeInstanceOf(Response);
-      expect(result!.status).toBe(302);
-      expect(new URL(result!.headers.get('location')!).pathname).toBe('/dashboard');
-    });
-
-    it('redirects to /dashboard when sessionClaims is null', async () => {
-      mockProtect.mockResolvedValue({
-        sessionClaims: null,
-      });
-
-      const req = createRequest('/admin/scenarios');
-      const result = await middleware(req);
-
-      expect(result).toBeInstanceOf(Response);
-      expect(result!.status).toBe(302);
-      expect(new URL(result!.headers.get('location')!).pathname).toBe('/dashboard');
-    });
-
-    it('redirects to /dashboard when metadata.role is empty string', async () => {
-      mockProtect.mockResolvedValue({
-        sessionClaims: { metadata: { role: '' } },
-      });
-
-      const req = createRequest('/admin/users');
-      const result = await middleware(req);
-
-      expect(result).toBeInstanceOf(Response);
-      expect(new URL(result!.headers.get('location')!).pathname).toBe('/dashboard');
+      expect(result).toBeUndefined();
     });
 
     it('handles nested admin routes (/admin/users/123)', async () => {
