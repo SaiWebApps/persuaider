@@ -109,7 +109,7 @@ describe('buildPersonaPrompt', () => {
   it('includes conversation guidelines', () => {
     const prompt = buildPersonaPrompt(basePersona, baseScenario);
     expect(prompt).toContain('Stay in character');
-    expect(prompt).toContain('Keep responses concise');
+    expect(prompt).toContain('Keep replies under 120 words');
     expect(prompt).toContain('Push back on weak arguments');
   });
 
@@ -185,5 +185,64 @@ describe('buildConversationContext', () => {
     const result = buildConversationContext(basePersona, []);
     expect(result).toHaveLength(1);
     expect(result[0].role).toBe('system');
+  });
+});
+
+describe('buildPersonaPrompt: everything the author wrote reaches the model', () => {
+  const salaryIssues = JSON.stringify([
+    {
+      name: 'Annual salary',
+      unit: 'USD',
+      learnerWants: 'higher',
+      learner: { target: 130000, reservation: 115000, weight: 100 },
+      counterpart: { target: 108000, reservation: 120000, weight: 100 },
+    },
+  ]);
+
+  it('includes the persona backstory', () => {
+    const prompt = buildPersonaPrompt(basePersona, baseScenario);
+    expect(prompt).toContain('A hiring manager at a tech company');
+  });
+
+  it('includes the confidential role brief and context notes', () => {
+    const prompt = buildPersonaPrompt(
+      { ...basePersona, role: { name: 'Employer', description: 'Budget freeze until Q3; retention bonus available.' } },
+      { ...baseScenario, contextNotes: 'The company just missed its quarter.' }
+    );
+    expect(prompt).toContain('Budget freeze until Q3');
+    expect(prompt).toContain('do not read it aloud');
+    expect(prompt).toContain('The company just missed its quarter.');
+  });
+
+  it('includes framework elements, not just names', () => {
+    const prompt = buildPersonaPrompt(basePersona, baseScenario);
+    expect(prompt).toContain('Market Research: Cited salary data');
+  });
+
+  it('turns openness into a resistance instruction', () => {
+    const hard = buildPersonaPrompt({ ...basePersona, characteristics: JSON.stringify({ openness: 0.1 }) }, baseScenario);
+    const soft = buildPersonaPrompt({ ...basePersona, characteristics: JSON.stringify({ openness: 0.9 }) }, baseScenario);
+    expect(hard).toContain('Very hard to move');
+    expect(soft).toContain('Very open');
+  });
+
+  it('states the counterpart target and walk-away and the hard rules', () => {
+    const prompt = buildPersonaPrompt(basePersona, { ...baseScenario, issues: salaryIssues });
+    expect(prompt).toContain('Your target: $108,000');
+    expect(prompt).toContain('Your walk-away limit: $120,000');
+    expect(prompt).toContain('you want it lower');
+    expect(prompt).toContain('Never agree to, offer, or "approve" anything beyond your walk-away limit');
+    expect(prompt).not.toContain('130,000');
+  });
+
+  it('omits the position block when the scenario has no issues', () => {
+    const prompt = buildPersonaPrompt(basePersona, baseScenario);
+    expect(prompt).not.toContain('walk-away limit');
+  });
+
+  it('no longer caps replies at 2-4 sentences', () => {
+    const prompt = buildPersonaPrompt(basePersona, baseScenario);
+    expect(prompt).not.toContain('2-4 sentences max');
+    expect(prompt).toContain('under 120 words');
   });
 });

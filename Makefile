@@ -42,8 +42,8 @@ ensure-env:
 	@if [ ! -f .env.local ]; then \
 		echo "📝 Creating .env.local..."; \
 		echo "# Database (Postgres; 'make db-up' starts one in Docker)" > .env.local; \
-		echo "DATABASE_URL=\"postgresql://persuaider:persuaider@localhost:5432/persuaider\"" >> .env.local; \
-		echo "DATABASE_URL_UNPOOLED=\"postgresql://persuaider:persuaider@localhost:5432/persuaider\"" >> .env.local; \
+		echo "DATABASE_URL=\"postgresql://persuaider:persuaider@localhost:5433/persuaider\"" >> .env.local; \
+		echo "DATABASE_URL_UNPOOLED=\"postgresql://persuaider:persuaider@localhost:5433/persuaider\"" >> .env.local; \
 		echo "" >> .env.local; \
 		echo "# Authentication (Clerk). Empty = keyless mode; the app prints a claim link." >> .env.local; \
 		echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=\"\"" >> .env.local; \

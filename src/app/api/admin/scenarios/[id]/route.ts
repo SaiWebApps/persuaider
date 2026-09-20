@@ -5,10 +5,12 @@ import { ValidationError } from '@/types';
 import {
   parseContextNotesInput,
   parseEvaluationCriteriaInput,
+  parseIssuesInput,
   parseTagsInput,
   parseVisibilityInput,
   parseWinConditionInput,
   readEvaluationCriteria,
+  readIssues,
   readTags,
   readWinCondition,
   serialize,
@@ -49,6 +51,7 @@ export async function GET(
     evaluationCriteria: readEvaluationCriteria(scenario.evaluationCriteria),
     winCondition: readWinCondition(scenario.winCondition),
     tags: readTags(scenario.tags),
+    issues: readIssues(scenario.issues),
   };
 
   return NextResponse.json({ scenario: response });
@@ -83,6 +86,7 @@ export async function PATCH(
     if (body.winCondition !== undefined) updateData.winCondition = serialize(parseWinConditionInput(body.winCondition));
     if (body.contextNotes !== undefined) updateData.contextNotes = parseContextNotesInput(body.contextNotes);
     if (body.tags !== undefined) updateData.tags = serialize(parseTagsInput(body.tags));
+    if (body.issues !== undefined) updateData.issues = serialize(parseIssuesInput(body.issues));
     if (body.visibility !== undefined) updateData.visibility = parseVisibilityInput(body.visibility);
   } catch (error) {
     if (error instanceof ValidationError) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -111,6 +115,7 @@ export async function PATCH(
     evaluationCriteria: readEvaluationCriteria(scenario.evaluationCriteria),
     winCondition: readWinCondition(scenario.winCondition),
     tags: readTags(scenario.tags),
+    issues: readIssues(scenario.issues),
   };
 
   return NextResponse.json({ scenario: response });

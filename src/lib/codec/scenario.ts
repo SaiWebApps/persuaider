@@ -161,7 +161,7 @@ export const DEFAULT_WIN_CONDITION: WinCondition = { type: 'manual', maxMessages
 function formatIssues(column: string, error: z.ZodError): string {
   const issue = error.issues[0];
   const path = issue.path.map((p, i) => (typeof p === 'number' ? `[${p}]` : i === 0 ? String(p) : `.${String(p)}`)).join('');
-  const withPath = path ? `${column}.${path}` : column;
+  const withPath = path ? (path.startsWith('[') ? `${column}${path}` : `${column}.${path}`) : column;
   // Messages already name their own leaf field; avoid "name name must be".
   const leaf = String(issue.path[issue.path.length - 1] ?? '');
   const message = issue.message.startsWith(`${leaf} `) ? issue.message.slice(leaf.length + 1) : issue.message;
@@ -253,6 +253,39 @@ export function parseVisibilityInput(value: unknown): 'public' | 'unlisted' {
 
 // ---------- serialize ----------
 
-export function serialize(value: EvaluationCriteria | WinCondition | string[] | PartialCharacteristics): string {
+export function serialize(value: EvaluationCriteria | WinCondition | string[] | PartialCharacteristics | Issue[]): string {
   return JSON.stringify(value);
+}
+
+// ---------- issues ----------
+
+const sideSchema = z.object({
+  target: z.number({ error: 'target must be a number' }),
+  reservation: z.number({ error: 'reservation must be a number' }),
+  weight: z
+    .number({ error: 'weight must be a number between 0 and 100' })
+    .min(0, { error: 'weight must be a number between 0 and 100' })
+    .max(100, { error: 'weight must be a number between 0 and 100' })
+    .default(100),
+});
+
+export const issueSchema = z.object({
+  name: z.string({ error: 'name must be a string (1-100 chars)' }).min(1).max(100),
+  unit: z.string().max(20).optional(),
+  /** Which direction is better for the learner on this issue. */
+  learnerWants: z.enum(['higher', 'lower'], { error: 'learnerWants must be "higher" or "lower"' }),
+  learner: sideSchema,
+  counterpart: sideSchema,
+});
+
+export const issuesSchema = z.array(issueSchema, { error: 'issues must be an array' }).max(10, { error: 'issues must have at most 10 items' });
+
+export type Issue = z.infer<typeof issueSchema>;
+
+export function readIssues(text: string | null | undefined): Issue[] {
+  return lenient(issuesSchema, text, []);
+}
+
+export function parseIssuesInput(value: unknown): Issue[] {
+  return strict('issues', issuesSchema, value);
 }

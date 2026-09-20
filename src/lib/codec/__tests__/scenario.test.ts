@@ -113,3 +113,28 @@ describe('write path is strict and names the field', () => {
     expect(parseCharacteristicsInput({ openness: 0.4, personality: ['calm'] })).toEqual({ openness: 0.4, personality: ['calm'] });
   });
 });
+
+describe('issues', () => {
+  const { readIssues, parseIssuesInput } = jest.requireActual('../scenario') as typeof import('../scenario');
+  const salary = {
+    name: 'Annual salary',
+    unit: 'USD',
+    learnerWants: 'higher',
+    learner: { target: 130000, reservation: 115000, weight: 100 },
+    counterpart: { target: 108000, reservation: 120000, weight: 100 },
+  };
+
+  it('read path: junk is an empty list, valid rows round-trip', () => {
+    expect(readIssues(null)).toEqual([]);
+    expect(readIssues('nope')).toEqual([]);
+    expect(readIssues(JSON.stringify([salary]))).toEqual([salary]);
+  });
+
+  it('write path: names the field and fills weight', () => {
+    expect(() => parseIssuesInput([{ ...salary, learnerWants: 'sideways' }])).toThrow('issues[0].learnerWants must be');
+    expect(() => parseIssuesInput([{ ...salary, counterpart: { target: 1 } }])).toThrow('issues[0].counterpart.reservation');
+    const { weight, ...side } = salary.learner;
+    void weight;
+    expect(parseIssuesInput([{ ...salary, learner: side }])[0].learner.weight).toBe(100);
+  });
+});

@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: persuaider
       POSTGRES_DB: persuaider
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - persuaider-pg:/var/lib/postgresql/data
 volumes:
