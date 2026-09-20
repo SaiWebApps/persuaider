@@ -9,7 +9,8 @@ import type { GeneratedScenario } from '@/types';
 interface GenerateScenarioModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (scenario: GeneratedScenario) => void;
+  /** Resolves to null on success, or an error message to show inside the modal. */
+  onSave: (scenario: GeneratedScenario) => Promise<string | null> | void;
 }
 
 type TabType = 'describe' | 'upload';
@@ -73,10 +74,23 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
     setIsLoading(false);
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (generatedScenario) {
-      onSave(generatedScenario);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const handleSave = useCallback(async () => {
+    if (!generatedScenario) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const result = await onSave(generatedScenario);
+      if (typeof result === 'string') {
+        setSaveError(result); // keep the preview and the author's edits
+        return;
+      }
       handleReset();
+    } catch {
+      setSaveError('Could not save the scenario. Your edits are still here.');
+    } finally {
+      setSaving(false);
     }
   }, [generatedScenario, onSave, handleReset]);
 
@@ -122,13 +136,18 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
             <Button onClick={handleReset} data-testid="back-button">
               Back
             </Button>
-            <Button onClick={handleSave} data-testid="save-button">
-              Save Scenario
+            <Button onClick={handleSave} disabled={saving} data-testid="save-button">
+              {saving ? 'Saving…' : 'Save Scenario'}
             </Button>
           </>
         }
       >
         <div className="space-y-4" data-testid="scenario-preview">
+          {saveError && (
+            <p role="alert" data-testid="save-error" className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-700 dark:bg-red-950/40 dark:text-red-200">
+              {saveError}
+            </p>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title
@@ -177,6 +196,80 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
               data-testid="edit-ai-role"
             />
           </div>
+          {(generatedScenario.roles ?? []).length > 0 && (
+            <div data-testid="sides-preview">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Sides {generatedScenario.learnerRoleName ? `(you play: ${generatedScenario.learnerRoleName})` : ''}
+              </label>
+              <div className="space-y-2">
+                {generatedScenario.roles.map((role, idx) => (
+                  <div key={idx} className="p-2 border border-gray-200 dark:border-gray-600 rounded text-sm" data-testid={'side-' + idx}>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{role.name}</span>
+                    {role.name === generatedScenario.learnerRoleName && <span className="ml-2 text-xs text-indigo-700 dark:text-indigo-300">you</span>}
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">{role.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(generatedScenario.issues ?? []).length > 0 && (
+            <div data-testid="issues-preview">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Numbers (confirm or edit; the counterpart never sees yours, you never see theirs during play)
+              </label>
+              <div className="space-y-3">
+                {generatedScenario.issues.map((issue, idx) => {
+                  const setNumber = (side: 'learner' | 'counterpart', key: 'target' | 'reservation', value: string) => {
+                    const n = Number(value);
+                    if (!Number.isFinite(n)) return;
+                    const issues = generatedScenario.issues.map((it, i) => (i === idx ? { ...it, [side]: { ...it[side], [key]: n } } : it));
+                    setGeneratedScenario({ ...generatedScenario, issues });
+                  };
+                  const field = (side: 'learner' | 'counterpart', key: 'target' | 'reservation') => (
+                    <label className="flex flex-col text-xs text-gray-600 dark:text-gray-400">
+                      {side === 'learner' ? 'Your' : 'Their'} {key === 'target' ? 'target' : 'walk-away'}
+                      <input
+                        type="number"
+                        value={issue[side][key]}
+                        onChange={(e) => setNumber(side, key, e.target.value)}
+                        data-testid={`issue-${idx}-${side}-${key}`}
+                        className="mt-1 w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                    </label>
+                  );
+                  const higher = issue.learnerWants === 'higher';
+                  const zoneLow = higher ? issue.learner.reservation : issue.counterpart.reservation;
+                  const zoneHigh = higher ? issue.counterpart.reservation : issue.learner.reservation;
+                  const directionOk = higher
+                    ? issue.learner.target >= issue.learner.reservation && issue.counterpart.target <= issue.counterpart.reservation
+                    : issue.learner.target <= issue.learner.reservation && issue.counterpart.target >= issue.counterpart.reservation;
+                  const zone = !directionOk
+                    ? 'Targets must be on the right side of the walk-aways'
+                    : zoneLow <= zoneHigh
+                      ? `Deal zone: ${zoneLow.toLocaleString('en-US')} – ${zoneHigh.toLocaleString('en-US')}`
+                      : 'No overlap: no deal is possible with these limits';
+                  return (
+                    <div key={idx} className="p-2 border border-gray-200 dark:border-gray-600 rounded text-sm" data-testid={'issue-' + idx}>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
+                        {issue.name}
+                        {issue.unit ? <span className="text-gray-500 dark:text-gray-400 ml-1">({issue.unit})</span> : null}
+                        <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">you want it {issue.learnerWants}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-3">
+                        {field('learner', 'target')}
+                        {field('learner', 'reservation')}
+                        {field('counterpart', 'target')}
+                        {field('counterpart', 'reservation')}
+                      </div>
+                      <p className={`mt-2 text-xs ${directionOk && zoneLow <= zoneHigh ? 'text-gray-600 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}`} data-testid={`issue-${idx}-zone`}>
+                        {zone}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {generatedScenario.personas.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -193,7 +286,7 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
                       {persona.name}
                     </span>
                     <span className="text-gray-500 dark:text-gray-400 ml-2">
-                      ({persona.roleType})
+                      ({persona.roleType}{persona.roleName ? ` · plays ${persona.roleName}` : ''})
                     </span>
                   </div>
                 ))}

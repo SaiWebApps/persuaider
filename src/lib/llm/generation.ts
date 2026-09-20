@@ -1,7 +1,8 @@
 import { LLMProviderFactory } from './providers/factory';
 import { recordLlmCall, type Meter } from './usage';
 import { extractDocumentContentFromBuffer } from '@/lib/documents/extract';
-import type { GeneratedScenario, GeneratedPersona, PersonaCharacteristics, EvaluationCriteria, WinCondition, GeneratedRole } from '@/types';
+import type { GeneratedScenario, GeneratedPersona, PersonaCharacteristics, EvaluationCriteria, WinCondition, GeneratedRole, GeneratedIssue } from '@/types';
+import { issueWithDirectionSchema } from '@/lib/codec/scenario';
 
 const MAX_TITLE_LENGTH = 200;
 
@@ -37,13 +38,25 @@ Generate a complete negotiation training scenario. Respond with ONLY valid JSON 
   },
   "winCondition": { "type": "manual", "maxMessages": 20 },
   "roles": [
-    { "name": "Role Name", "description": "Role description" }
+    { "name": "Trainee side name", "description": "Confidential brief for the trainee's side: their situation, pressures, alternatives, and what matters to them (story, not numbers)" },
+    { "name": "Counterpart side name", "description": "Confidential brief for the counterpart's side (story, not numbers)" }
+  ],
+  "learnerRole": "Trainee side name",
+  "issues": [
+    {
+      "name": "What is being negotiated (e.g. Price)",
+      "unit": "USD",
+      "learnerWants": "higher or lower",
+      "learner": { "target": 0, "reservation": 0, "weight": 100 },
+      "counterpart": { "target": 0, "reservation": 0, "weight": 100 }
+    }
   ],
   "personas": [
     {
       "name": "Persona Name",
       "description": "Character background and motivation",
       "roleType": "Their role in the negotiation",
+      "role": "Counterpart side name",
       "initialGreeting": "Their unique opening line",
       "characteristics": {
         "openness": 0.5,
@@ -63,7 +76,10 @@ Requirements:
 - Personas should have varied openness levels (0.0 = very resistant to 1.0 = very receptive)
 - Each persona should have a distinct personality, concerns, and role behavior
 - The initialGreeting should set the scene and tone for the negotiation
-- Framework weights should sum to 100 across all frameworks`;
+- Framework weights should sum to 100 across all frameworks
+- Exactly two roles: the side the trainee plays and the side every persona plays; "learnerRole" names the trainee's side and each persona's "role" names the other side
+- 1 to 3 issues with concrete numbers. For "learnerWants": "higher", the trainee's target is above their reservation and the counterpart's target is below the counterpart's reservation; mirror this for "lower". Leave a realistic overlap between the two reservations so a deal is possible but not easy.
+- Role briefs tell the story and pressures of each side; the numbers live only in "issues"`;
 }
 
 /**
@@ -104,13 +120,25 @@ Respond with ONLY valid JSON matching this exact structure (no other text before
   },
   "winCondition": { "type": "manual", "maxMessages": 20 },
   "roles": [
-    { "name": "Role Name", "description": "Role description" }
+    { "name": "Trainee side name", "description": "Confidential brief for the trainee's side: their situation, pressures, alternatives, and what matters to them (story, not numbers)" },
+    { "name": "Counterpart side name", "description": "Confidential brief for the counterpart's side (story, not numbers)" }
+  ],
+  "learnerRole": "Trainee side name",
+  "issues": [
+    {
+      "name": "What is being negotiated (e.g. Price)",
+      "unit": "USD",
+      "learnerWants": "higher or lower",
+      "learner": { "target": 0, "reservation": 0, "weight": 100 },
+      "counterpart": { "target": 0, "reservation": 0, "weight": 100 }
+    }
   ],
   "personas": [
     {
       "name": "Persona Name",
       "description": "Character background and motivation",
       "roleType": "Their role in the negotiation",
+      "role": "Counterpart side name",
       "initialGreeting": "Their unique opening line",
       "characteristics": {
         "openness": 0.5,
@@ -130,7 +158,10 @@ Requirements:
 - Personas should have varied openness levels (0.0 = very resistant to 1.0 = very receptive)
 - Each persona should have a distinct personality, concerns, and role behavior
 - Framework weights should sum to 100 across all frameworks
-- If the document describes a specific situation, base the scenario on that situation`;
+- If the document describes a specific situation, base the scenario on that situation
+- Exactly two roles: the side the trainee plays and the side every persona plays; "learnerRole" names the trainee's side and each persona's "role" names the other side
+- 1 to 3 issues with concrete numbers. For "learnerWants": "higher", the trainee's target is above their reservation and the counterpart's target is below the counterpart's reservation; mirror this for "lower". Leave a realistic overlap between the two reservations so a deal is possible but not easy.
+- Role briefs tell the story and pressures of each side; the numbers live only in "issues"`;
 }
 
 /**
@@ -196,6 +227,8 @@ export function parseGenerationResponse(raw: string): GeneratedScenario | null {
   const winCondition = parseWinCondition(parsed.winCondition);
   const roles = parseRoles(parsed.roles);
   const personas = parsePersonas(parsed.personas);
+  const learnerRoleName = parseLearnerRoleName(parsed.learnerRole, roles, personas);
+  const issues = parseIssues(parsed.issues);
 
   return {
     title,
@@ -206,6 +239,8 @@ export function parseGenerationResponse(raw: string): GeneratedScenario | null {
     evaluationCriteria,
     winCondition,
     roles,
+    learnerRoleName,
+    issues,
     personas,
   };
 }
@@ -221,7 +256,7 @@ export async function generateScenario(description: string, meter?: Meter): Prom
     // Sent as the user turn: Anthropic requires at least one non-system message,
       // and a system-only call is rejected with a 400.
       [{ role: 'user' as const, content: prompt }],
-    { temperature: 0.7, maxTokens: 4000 }
+    { temperature: 0.7, maxTokens: 8000 }
   );
 
   if (meter) await recordLlmCall(meter, response);
@@ -266,7 +301,7 @@ export async function generateScenarioFromDocument(
     // Sent as the user turn: Anthropic requires at least one non-system message,
       // and a system-only call is rejected with a 400.
       [{ role: 'user' as const, content: prompt }],
-    { temperature: 0.7, maxTokens: 4000 }
+    { temperature: 0.7, maxTokens: 8000 }
   );
 
   if (meter) await recordLlmCall(meter, response);
@@ -386,7 +421,39 @@ function parsePersonas(raw: unknown): GeneratedPersona[] {
       roleType: typeof p.roleType === 'string' ? String(p.roleType) : 'Counterpart',
       initialGreeting: typeof p.initialGreeting === 'string' ? String(p.initialGreeting) : '',
       characteristics: parseCharacteristics(p.characteristics),
+      ...(typeof p.role === 'string' && p.role.trim() ? { roleName: p.role.trim() } : {}),
     }));
+}
+
+/**
+ * The trainee's side: the named role if it exists; otherwise the first role no persona
+ * claims; otherwise the first role; null without roles.
+ */
+function parseLearnerRoleName(raw: unknown, roles: GeneratedRole[], personas: GeneratedPersona[]): string | null {
+  if (roles.length === 0) return null;
+  const names = roles.map((r) => r.name);
+  const claimed = new Set(personas.map((p) => p.roleName).filter(Boolean));
+  const named = typeof raw === 'string' ? raw.trim() : '';
+  // The named side wins only if no persona plays it; the trainee cannot share a side with a persona.
+  if (names.includes(named) && !claimed.has(named)) return named;
+  return names.find((n) => !claimed.has(n)) ?? (names.includes(named) ? named : names[0]);
+}
+
+/** Issues are validated with the same rules as a saved scenario; anything invalid is dropped. */
+function parseIssues(raw: unknown): GeneratedIssue[] {
+  if (!Array.isArray(raw)) return [];
+  const out: GeneratedIssue[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const parsed = issueWithDirectionSchema.safeParse(item);
+    if (!parsed.success) continue;
+    const key = parsed.data.name.trim().toLowerCase();
+    if (seen.has(key)) continue; // same rule as a saved scenario: no duplicate names
+    seen.add(key);
+    out.push(parsed.data);
+    if (out.length === 10) break;
+  }
+  return out;
 }
 
 function parseCharacteristics(raw: unknown): PersonaCharacteristics {

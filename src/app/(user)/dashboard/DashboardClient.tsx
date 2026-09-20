@@ -6,6 +6,8 @@ import { PersonaGrid, type PersonaWithStatus } from '@/components/personas/Perso
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { GenerateScenarioModal } from '@/components/scenarios/GenerateScenarioModal';
+import type { GeneratedScenario } from '@/types';
 
 interface ScenarioWithPersonas {
   id: string;
@@ -35,6 +37,8 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
   const [scenarios, setScenarios] = useState(initialScenarios);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateError, setGenerateError] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState('');
   const [joining, setJoining] = useState(false);
@@ -172,6 +176,40 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
     }
   };
 
+  const handleGeneratedSave = async (generated: GeneratedScenario): Promise<string | null> => {
+    setGenerateError('');
+    const res = await fetch('/api/scenarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: generated.title,
+        description: generated.description,
+        userRole: generated.userRole,
+        aiRole: generated.aiRole,
+        evaluationCriteria: generated.evaluationCriteria,
+        winCondition: generated.winCondition,
+        issues: generated.issues,
+        roles: generated.roles,
+        learnerRoleName: generated.learnerRoleName,
+        personas: generated.personas.map((p) => ({
+          name: p.name,
+          description: p.description,
+          roleType: p.roleType,
+          initialGreeting: p.initialGreeting || generated.initialGreeting || null,
+          characteristics: p.characteristics,
+          roleName: p.roleName ?? null,
+        })),
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || 'Failed to save the generated scenario';
+    }
+    setShowGenerateModal(false);
+    router.refresh();
+    return null;
+  };
+
   const allPersonas = scenarios.flatMap((s) => s.personas);
 
   return (
@@ -179,6 +217,7 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
       {/* Action buttons */}
       <div className="flex gap-3 mb-6">
         <Button onClick={() => setShowCreateModal(true)}>Create Scenario</Button>
+        <Button variant="secondary" onClick={() => setShowGenerateModal(true)} data-testid="generate-with-ai">Generate with AI</Button>
         <Button variant="secondary" onClick={() => setShowJoinModal(true)}>Join by Code</Button>
       </div>
 
@@ -313,6 +352,11 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
           </div>
         </div>
       </Modal>
+
+      <GenerateScenarioModal isOpen={showGenerateModal} onClose={() => setShowGenerateModal(false)} onSave={handleGeneratedSave} />
+      {generateError && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">{generateError}</p>
+      )}
 
       {/* Create Scenario Modal */}
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Scenario">

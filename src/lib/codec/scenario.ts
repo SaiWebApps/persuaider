@@ -284,7 +284,7 @@ export const issueSchema = z.object({
   counterpart: sideSchema,
 });
 
-const issueWithDirectionSchema = issueSchema.superRefine((i, ctx) => {
+export const issueWithDirectionSchema = issueSchema.superRefine((i, ctx) => {
   const ok = (side: { target: number; reservation: number }, wantsHigher: boolean) =>
     wantsHigher ? side.target >= side.reservation : side.target <= side.reservation;
   if (!ok(i.learner, i.learnerWants === 'higher')) {

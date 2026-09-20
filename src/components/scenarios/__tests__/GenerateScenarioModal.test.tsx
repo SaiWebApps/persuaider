@@ -51,6 +51,8 @@ const MOCK_SCENARIO = {
   evaluationCriteria: { frameworks: [], scoringInstructions: '' },
   winCondition: { type: 'manual', maxMessages: 20 },
   roles: [],
+  learnerRoleName: null,
+  issues: [],
   personas: [
     { name: 'Alice', description: 'Test', roleType: 'Manager', initialGreeting: 'Hi', characteristics: { openness: 0.5, concerns: [], personality: [], roleBehavior: '' } },
   ],
