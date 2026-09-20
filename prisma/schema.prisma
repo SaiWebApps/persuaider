@@ -115,6 +115,7 @@ model Conversation {
   userId      String
   personaId   String
   scenarioId  String
+  roleId      String?   // the side the learner played (null for scenarios without roles)
   status      String    @default("in_progress")
   startedAt   DateTime  @default(now())
   completedAt DateTime?
@@ -123,6 +124,7 @@ model Conversation {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   persona     Persona   @relation(fields: [personaId], references: [id], onDelete: Cascade)
   scenario    Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  role        Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
   messages    Message[]
   summary     Summary?
 
@@ -174,6 +176,7 @@ model Role {
 
   scenario     Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   personas     Persona[]
+  conversations Conversation[]
 
   @@map("roles")
   @@index([scenarioId])

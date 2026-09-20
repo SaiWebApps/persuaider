@@ -36,6 +36,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
       persona={conversation.persona}
       scenarioTitle={conversation.scenario.title}
       winCondition={readWinCondition(conversation.scenario.winCondition)}
+      learnerRole={conversation.role ? { name: conversation.role.name, brief: conversation.role.description } : null}
       initialMessages={conversation.messages.map((m) => ({
         ...m,
         role: m.role as 'user' | 'assistant',

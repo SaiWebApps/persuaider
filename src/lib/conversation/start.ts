@@ -28,6 +28,8 @@ export const conversationInclude = {
   scenario: {
     select: { id: true, title: true, userRole: true, aiRole: true, winCondition: true },
   },
+  /** The learner's side, with its confidential brief. */
+  role: { select: { id: true, name: true, description: true } },
   messages: { orderBy: { createdAt: 'asc' as const } },
 } satisfies Prisma.ConversationInclude;
 
@@ -39,6 +41,8 @@ export interface StartConversationInput {
   personaId: string;
   /** Optional cross-check: if given, the persona must belong to this scenario. */
   scenarioId?: string;
+  /** The side the learner plays. Defaults to the scenario role the persona does not play. */
+  roleId?: string;
 }
 
 export interface StartConversationResult {
@@ -76,13 +80,15 @@ export async function startOrResumeConversation(input: StartConversationInput): 
 
   const persona = await prisma.persona.findUnique({
     where: { id: personaId },
-    select: { id: true, name: true, initialGreeting: true, scenarioId: true },
+    select: { id: true, name: true, initialGreeting: true, scenarioId: true, roleId: true },
   });
   if (!persona || (scenarioId && persona.scenarioId !== scenarioId)) {
     throw new NotFoundError('Persona', personaId);
   }
 
   await assertCanPractice(userId, role, persona.scenarioId);
+
+  const learnerRoleId = await resolveLearnerRole(persona.scenarioId, persona.roleId, input.roleId);
 
   const findInProgress = () =>
     prisma.conversation.findFirst({
@@ -113,7 +119,7 @@ export async function startOrResumeConversation(input: StartConversationInput): 
   async function createWithGreeting(): Promise<StartedConversation> {
     return prisma.$transaction(async (tx) => {
     const created = await tx.conversation.create({
-      data: { userId, personaId, scenarioId: resolvedPersona.scenarioId, status: 'in_progress' },
+      data: { userId, personaId, scenarioId: resolvedPersona.scenarioId, roleId: learnerRoleId, status: 'in_progress' },
       select: { id: true },
     });
     await tx.message.create({
@@ -130,4 +136,20 @@ export async function startOrResumeConversation(input: StartConversationInput): 
     });
     });
   }
+}
+
+/**
+ * Which side does the learner play? An explicit choice must be one of the scenario's
+ * roles and not the persona's own side. Otherwise: the first scenario role the persona
+ * does not play; null when the scenario defines no roles.
+ */
+export async function resolveLearnerRole(scenarioId: string, personaRoleId: string | null, requested?: string): Promise<string | null> {
+  const roles = await prisma.role.findMany({ where: { scenarioId }, orderBy: { displayOrder: 'asc' }, select: { id: true } });
+  if (roles.length === 0) return null;
+  if (requested) {
+    const ok = roles.some((r) => r.id === requested) && requested !== personaRoleId;
+    if (!ok) throw new NotFoundError('Role', requested);
+    return requested;
+  }
+  return roles.find((r) => r.id !== personaRoleId)?.id ?? null;
 }

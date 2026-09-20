@@ -13,11 +13,21 @@ interface ScenarioWithPersonas {
   description: string;
   userRole: string;
   aiRole: string;
+  learnerRoleName?: string | null;
   personas: PersonaWithStatus[];
 }
 
 interface DashboardClientProps {
   scenarios: ScenarioWithPersonas[];
+}
+
+function groupBySide(personas: PersonaWithStatus[]): Array<[string | null, PersonaWithStatus[]]> {
+  const groups = new Map<string | null, PersonaWithStatus[]>();
+  for (const p of personas) {
+    const side = (p as { role?: { name?: string } | null }).role?.name ?? null;
+    groups.set(side, [...(groups.get(side) ?? []), p]);
+  }
+  return [...groups.entries()];
 }
 
 export function DashboardClient({ scenarios: initialScenarios }: DashboardClientProps) {
@@ -234,8 +244,8 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{scenario.title}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{scenario.description}</p>
               <div className="flex gap-4 mt-2">
-                <span className="inline-flex items-center text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium">
-                  Your role: {scenario.userRole}
+                <span className="inline-flex items-center text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/50 px-2 py-1 rounded-full font-medium" data-testid="you-play">
+                  {scenario.learnerRoleName ? `You play: ${scenario.learnerRoleName}` : `Your role: ${scenario.userRole}`}
                 </span>
                 <span className="inline-flex items-center text-xs text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded-full font-medium">
                   AI role: {scenario.aiRole}
@@ -243,9 +253,18 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
               </div>
             </div>
 
-            {/* Personas grid */}
-            <div className="p-6">
-              <PersonaGrid personas={scenario.personas} onPersonaClick={handlePersonaClick} />
+            {/* Personas, grouped by the side they play when the scenario defines sides */}
+            <div className="p-6 space-y-6">
+              {groupBySide(scenario.personas).map(([side, personas]) => (
+                <div key={side ?? 'none'}>
+                  {side && (
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3" data-testid="against-side">
+                      Against: {side}
+                    </h4>
+                  )}
+                  <PersonaGrid personas={personas} onPersonaClick={handlePersonaClick} />
+                </div>
+              ))}
             </div>
           </section>
         ))}

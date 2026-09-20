@@ -44,13 +44,15 @@ describeIfPostgres('startOrResumeConversation (real database)', () => {
         winCondition: '{}',
         joinCode: `J${tag}`.slice(0, 20),
         createdById: creatorId,
-        personas: { create: { name: 'P', description: 'd', roleType: 'r', initialGreeting: 'Hi' } },
+        roles: { create: [{ name: 'Employee', description: 'secret A', displayOrder: 1 }, { name: 'Manager', description: 'secret B', displayOrder: 2 }] },
         members: { create: { userId: memberId } },
       },
-      include: { personas: true },
+      include: { roles: true },
     });
     scenarioId = scenario.id;
-    personaId = scenario.personas[0].id;
+    const managerRole = scenario.roles.find((r) => r.name === 'Manager')!;
+    const persona = await prisma.persona.create({ data: { scenarioId, roleId: managerRole.id, name: 'P', description: 'd', roleType: 'r', initialGreeting: 'Hi' } });
+    personaId = persona.id;
   });
 
   afterAll(async () => {
@@ -83,6 +85,8 @@ describeIfPostgres('startOrResumeConversation (real database)', () => {
     const again = await startOrResumeConversation({ userId: memberId, role: 'user', personaId });
     expect(again.created).toBe(false);
     expect(again.conversation.id).toBe([...ids][0]);
+    // The learner plays the side the persona does not: Employee, with its brief attached.
+    expect(again.conversation.role).toMatchObject({ name: 'Employee', description: 'secret A' });
   });
 
   it('the database itself refuses a second in-progress conversation for the same user and persona', async () => {

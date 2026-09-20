@@ -6,6 +6,7 @@ const db = {
   persona: { findUnique: jest.fn() },
   scenario: { findUnique: jest.fn() },
   userScenario: { findUnique: jest.fn() },
+  role: { findMany: jest.fn() },
   conversation: { findFirst: jest.fn(), create: jest.fn(), findUniqueOrThrow: jest.fn() },
   message: { create: jest.fn() },
   $transaction: jest.fn(async (fn: (tx: unknown) => unknown) => fn(db)),
@@ -16,10 +17,10 @@ jest.mock('@/lib/db/client', () => ({
   },
 }));
 
-import { startOrResumeConversation, assertCanPractice, defaultGreeting } from '../start';
+import { startOrResumeConversation, assertCanPractice, defaultGreeting, resolveLearnerRole } from '../start';
 import { AuthorizationError, NotFoundError } from '@/types';
 
-const persona = { id: 'p1', name: 'Alex', initialGreeting: 'Hi there', scenarioId: 's1' };
+const persona = { id: 'p1', name: 'Alex', initialGreeting: 'Hi there', scenarioId: 's1', roleId: null };
 const hydrated = { id: 'c1', messages: [{ id: 'm1' }], persona, scenario: { id: 's1' } };
 
 beforeEach(() => {
@@ -28,6 +29,7 @@ beforeEach(() => {
   db.scenario.findUnique.mockResolvedValue({ createdById: 'creator' });
   db.userScenario.findUnique.mockResolvedValue({ id: 'ms1' });
   db.conversation.findFirst.mockResolvedValue(null);
+  db.role.findMany.mockResolvedValue([]);
   db.conversation.create.mockResolvedValue({ id: 'c1' });
   db.conversation.findUniqueOrThrow.mockResolvedValue(hydrated);
 });
@@ -90,7 +92,7 @@ describe('startOrResumeConversation', () => {
     const result = await startOrResumeConversation({ userId: 'u1', role: 'user', personaId: 'p1' });
     expect(db.$transaction).toHaveBeenCalledTimes(1);
     expect(db.conversation.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { userId: 'u1', personaId: 'p1', scenarioId: 's1', status: 'in_progress' } })
+      expect.objectContaining({ data: { userId: 'u1', personaId: 'p1', scenarioId: 's1', roleId: null, status: 'in_progress' } })
     );
     expect(db.message.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -106,5 +108,30 @@ describe('startOrResumeConversation', () => {
     expect(db.message.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ content: defaultGreeting('Alex') }) })
     );
+  });
+});
+
+describe('resolveLearnerRole', () => {
+  const roles = [{ id: 'r-employee' }, { id: 'r-manager' }];
+  it('is null when the scenario defines no roles', async () => {
+    db.role.findMany.mockResolvedValue([]);
+    await expect(resolveLearnerRole('s1', 'r-manager')).resolves.toBeNull();
+  });
+  it('defaults to the first role the persona does not play', async () => {
+    db.role.findMany.mockResolvedValue(roles);
+    await expect(resolveLearnerRole('s1', 'r-manager')).resolves.toBe('r-employee');
+    await expect(resolveLearnerRole('s1', 'r-employee')).resolves.toBe('r-manager');
+  });
+  it('accepts an explicit side that exists and is not the persona\'s own', async () => {
+    db.role.findMany.mockResolvedValue(roles);
+    await expect(resolveLearnerRole('s1', 'r-manager', 'r-employee')).resolves.toBe('r-employee');
+    await expect(resolveLearnerRole('s1', 'r-manager', 'r-manager')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(resolveLearnerRole('s1', 'r-manager', 'r-other')).rejects.toBeInstanceOf(NotFoundError);
+  });
+  it('stores the learner side on the new conversation', async () => {
+    db.role.findMany.mockResolvedValue(roles);
+    db.persona.findUnique.mockResolvedValue({ ...persona, roleId: 'r-manager' });
+    await startOrResumeConversation({ userId: 'u1', role: 'user', personaId: 'p1' });
+    expect(db.conversation.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ roleId: 'r-employee' }) }));
   });
 });
