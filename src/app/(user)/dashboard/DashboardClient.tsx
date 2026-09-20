@@ -61,9 +61,14 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
     return () => clearInterval(interval);
   }, [router]);
 
-  useEffect(() => {
+  // Keep local state in step with fresh server props (after router.refresh()).
+  // Adjusting state during render is the React-recommended form; a setState
+  // inside an effect would trigger a second render.
+  const [seenInitial, setSeenInitial] = useState(initialScenarios);
+  if (seenInitial !== initialScenarios) {
+    setSeenInitial(initialScenarios);
     setScenarios(initialScenarios);
-  }, [initialScenarios]);
+  }
 
   const handlePersonaClick = (persona: PersonaWithStatus) => {
     if (persona.status === 'completed') {

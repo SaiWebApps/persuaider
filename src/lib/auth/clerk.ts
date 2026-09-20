@@ -24,14 +24,11 @@ export interface AuthSession {
  * an optimization rather than a login prerequisite.
  */
 export async function getAuthSession(): Promise<AuthSession | null> {
-  let clerkUserId: string | null | undefined;
-  try {
-    const { userId } = await auth();
-    clerkUserId = userId;
-  } catch (error) {
-    console.error('[auth] Clerk auth() failed', error);
-    return null;
-  }
+  // Deliberately not wrapped in try/catch: Next.js signals "this route must be
+  // dynamic" by throwing from headers()/auth(), and swallowing that breaks the
+  // build. A genuinely misconfigured Clerk key surfaces as a loud 500, which is
+  // far easier to diagnose than a silent "logged out".
+  const { userId: clerkUserId } = await auth();
   if (!clerkUserId) return null;
 
   try {

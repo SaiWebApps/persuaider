@@ -155,10 +155,9 @@ describe('getAuthSession', () => {
     });
   });
 
-  it('returns null when auth() throws (Clerk down)', async () => {
+  it('propagates auth() errors so Next.js dynamic-render signals and Clerk misconfiguration are not swallowed', async () => {
     mockClerkAuth.mockRejectedValue(new Error('Clerk service unavailable'));
-    const result = await getAuthSession();
-    expect(result).toBeNull();
+    await expect(getAuthSession()).rejects.toThrow('Clerk service unavailable');
   });
 });
 
