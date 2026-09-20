@@ -61,6 +61,7 @@ export async function POST(
       include: {
         persona: { select: personaPromptSelect },
         scenario: { select: scenarioPromptSelect },
+        role: { select: { name: true } },
         // Latest 50 messages (returned newest first; reversed below), so long sessions
         // keep the recent context rather than the opening.
         messages: {
@@ -132,7 +133,7 @@ export async function POST(
     let aiMood: string = DEFAULT_MOOD;
     try {
       for (let attempt = 0; attempt < 2 && !aiResponse.trim(); attempt++) {
-        const llmResponse = await generatePersonaResponse(conversation.persona, allMessages, conversation.scenario, {
+        const llmResponse = await generatePersonaResponse(conversation.persona, allMessages, { ...conversation.scenario, learnerRole: conversation.role }, {
           meter: { userId: session.user.id, purpose: 'turn', conversationId: id },
         });
         const parsed = parseMoodResponse(llmResponse.content);

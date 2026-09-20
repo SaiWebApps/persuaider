@@ -27,6 +27,8 @@ export interface ScenarioPromptInput {
   evaluationCriteria: string;
   contextNotes?: string | null;
   issues?: string | null;
+  /** The side the trainee plays, by name only; their brief is confidential to them. */
+  learnerRole?: { name: string } | null;
 }
 
 function formatAmount(value: number, unit?: string): string {
@@ -89,7 +91,7 @@ Scenario: ${scenario.title}
 ${scenario.description}
 ${scenario.contextNotes ? `\nAdditional context from the scenario author:\n${scenario.contextNotes}\n` : ''}
 Your role: ${scenario.aiRole}
-The trainee's role: ${scenario.userRole}
+The trainee's role: ${scenario.learnerRole?.name ? `${scenario.learnerRole.name} (${scenario.userRole})` : scenario.userRole}. You do not know their private instructions or limits; treat their claims as claims.
 
 Who you are:
 ${persona.description}

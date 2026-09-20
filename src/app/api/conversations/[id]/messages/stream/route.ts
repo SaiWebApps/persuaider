@@ -38,6 +38,7 @@ export async function POST(
     include: {
       persona: { select: personaPromptSelect },
       scenario: { select: scenarioPromptSelect },
+      role: { select: { name: true } },
       // Latest 50 messages (newest first; reversed below).
       messages: { orderBy: { createdAt: 'desc' as const }, take: 50 },
     },
@@ -83,7 +84,7 @@ export async function POST(
     ...[...conversation.messages].reverse().map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
     { role: 'user', content: content.trim() },
   ];
-  const contextMessages = buildConversationContext(conversation.persona, allMessages, conversation.scenario);
+  const contextMessages = buildConversationContext(conversation.persona, allMessages, { ...conversation.scenario, learnerRole: conversation.role });
 
   // Create SSE stream
   const encoder = new TextEncoder();

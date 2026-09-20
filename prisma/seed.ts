@@ -133,6 +133,43 @@ async function main() {
 
   console.log('Created scenario:', scenario.title);
 
+  // Two sides with confidential briefs. The learner plays the Employee; every seeded
+  // persona plays the Manager.
+  const employeeRole = await prisma.role.upsert({
+    where: { id: `seed-role-${scenario.id}-employee` },
+    update: {
+      name: 'Employee',
+      description:
+        'Confidential to you. You earn $105,000. Market data you trust puts the role at $118,000–$125,000. You have a competing verbal offer at $115,000 that you would take if this fails. You want $130,000 but would accept $115,000. Beyond salary, a title change or a review in six months would matter to you.',
+    },
+    create: {
+      id: `seed-role-${scenario.id}-employee`,
+      scenarioId: scenario.id,
+      name: 'Employee',
+      description:
+        'Confidential to you. You earn $105,000. Market data you trust puts the role at $118,000–$125,000. You have a competing verbal offer at $115,000 that you would take if this fails. You want $130,000 but would accept $115,000. Beyond salary, a title change or a review in six months would matter to you.',
+      displayOrder: 1,
+    },
+  });
+  const managerRole = await prisma.role.upsert({
+    where: { id: `seed-role-${scenario.id}-manager` },
+    update: {
+      name: 'Manager',
+      description:
+        'Confidential to you. The compensation budget for this cycle is nearly spent; you can go to $120,000 at most and only with a written justification. You would rather offer a title change or an early review than cash. Losing this person would cost you a quarter of delivery.',
+    },
+    create: {
+      id: `seed-role-${scenario.id}-manager`,
+      scenarioId: scenario.id,
+      name: 'Manager',
+      description:
+        'Confidential to you. The compensation budget for this cycle is nearly spent; you can go to $120,000 at most and only with a written justification. You would rather offer a title change or an early review than cash. Losing this person would cost you a quarter of delivery.',
+      displayOrder: 2,
+    },
+  });
+  await prisma.scenario.update({ where: { id: scenario.id }, data: { learnerRoleId: employeeRole.id } });
+  console.log('Created roles:', employeeRole.name, managerRole.name);
+
   // Create personas for this scenario
   const personas = [
     {
@@ -179,10 +216,11 @@ async function main() {
   for (const personaData of personas) {
     const persona = await prisma.persona.upsert({
       where: { id: `seed-${scenario.id}-${personaData.displayOrder}` },
-      update: personaData,
+      update: { ...personaData, roleId: managerRole.id },
       create: {
         id: `seed-${scenario.id}-${personaData.displayOrder}`,
         scenarioId: scenario.id,
+        roleId: managerRole.id,
         ...personaData,
       },
     });

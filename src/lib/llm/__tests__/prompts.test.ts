@@ -246,3 +246,14 @@ describe('buildPersonaPrompt: everything the author wrote reaches the model', ()
     expect(prompt).toContain('under 120 words');
   });
 });
+
+describe('buildPersonaPrompt: the trainee\'s side', () => {
+  it('names the trainee\'s role and tells the persona it cannot see their private instructions', () => {
+    const prompt = buildPersonaPrompt(basePersona, { ...baseScenario, learnerRole: { name: 'Employee' } });
+    expect(prompt).toContain("The trainee's role: Employee (Job Candidate)");
+    expect(prompt).toContain('You do not know their private instructions');
+  });
+  it('falls back to the scenario userRole without roles', () => {
+    expect(buildPersonaPrompt(basePersona, baseScenario)).toContain("The trainee's role: Job Candidate.");
+  });
+});

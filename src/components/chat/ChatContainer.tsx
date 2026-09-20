@@ -33,13 +33,16 @@ interface ChatContainerProps {
   scenarioTitle: string;
   initialMessages: Message[];
   winCondition?: WinCondition;
+  /** The side the learner plays and its confidential brief. */
+  learnerRole?: { name: string; brief: string } | null;
 }
 
-export function ChatContainer({ conversationId, persona, scenarioTitle, initialMessages, winCondition }: ChatContainerProps) {
+export function ChatContainer({ conversationId, persona, scenarioTitle, initialMessages, winCondition, learnerRole }: ChatContainerProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [briefOpen, setBriefOpen] = useState(true);
   const win = winState(messages, winCondition ?? { type: 'manual' });
   const [showAbortModal, setShowAbortModal] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
@@ -275,6 +278,15 @@ export function ChatContainer({ conversationId, persona, scenarioTitle, initialM
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Your side and confidential brief */}
+      {learnerRole && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-6 py-2" data-testid="your-brief">
+          <button type="button" onClick={() => setBriefOpen((o) => !o)} className="text-sm font-medium text-amber-900 dark:text-amber-200" aria-expanded={briefOpen}>
+            You play: {learnerRole.name} · your confidential brief {briefOpen ? '▾' : '▸'}
+          </button>
+          {briefOpen && <p className="mt-1 text-sm text-amber-900/90 dark:text-amber-100/90" data-testid="your-brief-text">{learnerRole.brief}</p>}
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex justify-between items-center">

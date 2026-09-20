@@ -41,8 +41,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               name: true,
               description: true,
               roleType: true,
+              role: { select: { id: true, name: true } },
             },
           },
+          roles: { orderBy: { displayOrder: 'asc' }, select: { id: true, name: true } },
         },
       },
     },
@@ -66,6 +68,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     description: m.scenario.description,
     userRole: m.scenario.userRole,
     aiRole: m.scenario.aiRole,
+    // The side the learner plays: the scenario's learnerRoleId, else the first role no persona plays.
+    learnerRoleName:
+      m.scenario.roles.length > 0
+        ? (m.scenario.roles.find((r) => r.id === m.scenario.learnerRoleId)?.name ??
+          m.scenario.roles.find((r) => !m.scenario.personas.some((p) => p.role?.id === r.id))?.name ??
+          null)
+        : null,
     personas: m.scenario.personas.map((persona) => {
       const conversation = conversations.find(
         (c) => c.personaId === persona.id && c.scenarioId === m.scenarioId

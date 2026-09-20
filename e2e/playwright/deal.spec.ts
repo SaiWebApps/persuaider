@@ -94,6 +94,7 @@ test('deal outcome, computed score, hidden limit revealed on the second attempt,
   if (offered) await say(page, `Great. To be clear, we have a deal at $${offered.toLocaleString('en-US')}. Please confirm and I will sign today.`);
   await endSession(page);
 
+  await expect(page.locator('[data-testid="played-as"]')).toContainText('You played: Employee');
   const deal = page.locator('[data-testid="deal-outcome"]');
   await expect(deal).toBeVisible({ timeout: 15000 });
   await expect(deal).toContainText('Your target');

@@ -43,6 +43,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
         },
       },
       summary: true,
+      role: { select: { name: true } },
     },
     orderBy: {
       completedAt: 'desc',
@@ -109,6 +110,7 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {conversation.scenario.title}
+                {conversation.role && <span data-testid="played-as"> · You played: {conversation.role.name}</span>}
               </p>
             </div>
           </div>

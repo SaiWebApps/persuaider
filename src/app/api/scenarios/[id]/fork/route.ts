@@ -29,6 +29,7 @@ export async function POST(
     where: { id },
     include: {
       personas: true,
+      roles: { orderBy: { displayOrder: 'asc' } },
       members: { select: { userId: true } },
     },
   });
@@ -82,7 +83,19 @@ export async function POST(
     },
   });
 
-  // Copy all personas
+  // Copy roles (sides with confidential briefs), remembering old → new ids
+  const roleMap = new Map<string, string>();
+  for (const role of source.roles ?? []) {
+    const copy = await prisma.role.create({
+      data: { scenarioId: newScenario.id, name: role.name, description: role.description, displayOrder: role.displayOrder },
+    });
+    roleMap.set(role.id, copy.id);
+  }
+  if (source.learnerRoleId && roleMap.has(source.learnerRoleId)) {
+    await prisma.scenario.update({ where: { id: newScenario.id }, data: { learnerRoleId: roleMap.get(source.learnerRoleId) } });
+  }
+
+  // Copy all personas, keeping the side each one plays
   if (source.personas.length > 0) {
     await Promise.all(
       source.personas.map((persona) =>
@@ -94,6 +107,7 @@ export async function POST(
             characteristics: persona.characteristics,
             initialGreeting: persona.initialGreeting,
             displayOrder: persona.displayOrder,
+            roleId: persona.roleId ? (roleMap.get(persona.roleId) ?? null) : null,
             scenarioId: newScenario.id,
           },
         })

@@ -23,6 +23,8 @@ interface EvaluationScenario {
   userRole: string;
   aiRole: string;
   evaluationCriteria: string;
+  /** The trainee's side and its confidential brief, so the coach can judge BATNA use and preparation. */
+  learnerRole?: { name: string; description: string } | null;
 }
 
 export interface EvaluationResult {
@@ -76,7 +78,7 @@ export function buildEvaluationPrompt(
 Scenario: ${scenario.title}
 ${scenario.description}
 
-Trainee's role: ${scenario.userRole}
+Trainee's role: ${scenario.learnerRole ? `${scenario.learnerRole.name} (${scenario.userRole})` : scenario.userRole}${scenario.learnerRole ? `\nTrainee's confidential brief (they had this; the counterpart did not):\n${scenario.learnerRole.description}` : ''}
 AI counterpart: ${persona.name} (${persona.roleType})
 
 Evaluation Frameworks:

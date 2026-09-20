@@ -28,6 +28,8 @@ export const conversationInclude = {
   scenario: {
     select: { id: true, title: true, userRole: true, aiRole: true, winCondition: true },
   },
+  /** The learner's side, with its confidential brief. */
+  role: { select: { id: true, name: true, description: true } },
   messages: { orderBy: { createdAt: 'asc' as const } },
 } satisfies Prisma.ConversationInclude;
 
@@ -76,13 +78,15 @@ export async function startOrResumeConversation(input: StartConversationInput): 
 
   const persona = await prisma.persona.findUnique({
     where: { id: personaId },
-    select: { id: true, name: true, initialGreeting: true, scenarioId: true },
+    select: { id: true, name: true, initialGreeting: true, scenarioId: true, roleId: true },
   });
   if (!persona || (scenarioId && persona.scenarioId !== scenarioId)) {
     throw new NotFoundError('Persona', personaId);
   }
 
   await assertCanPractice(userId, role, persona.scenarioId);
+
+  const learnerRoleId = await resolveLearnerRole(persona.scenarioId, persona.roleId);
 
   const findInProgress = () =>
     prisma.conversation.findFirst({
@@ -113,7 +117,7 @@ export async function startOrResumeConversation(input: StartConversationInput): 
   async function createWithGreeting(): Promise<StartedConversation> {
     return prisma.$transaction(async (tx) => {
     const created = await tx.conversation.create({
-      data: { userId, personaId, scenarioId: resolvedPersona.scenarioId, status: 'in_progress' },
+      data: { userId, personaId, scenarioId: resolvedPersona.scenarioId, roleId: learnerRoleId, status: 'in_progress' },
       select: { id: true },
     });
     await tx.message.create({
@@ -130,4 +134,19 @@ export async function startOrResumeConversation(input: StartConversationInput): 
     });
     });
   }
+}
+
+/**
+ * Which side does the learner play? The scenario's learnerRoleId when set (the
+ * side Issues call "learner"); otherwise the first scenario role the persona does
+ * not play; null when the scenario defines no roles. There is deliberately no
+ * per-conversation choice yet: Issues are keyed learner/counterpart, so playing the
+ * other side would score against the wrong numbers.
+ */
+export async function resolveLearnerRole(scenarioId: string, personaRoleId: string | null): Promise<string | null> {
+  const scenario = await prisma.scenario.findUnique({ where: { id: scenarioId }, select: { learnerRoleId: true } });
+  if (scenario?.learnerRoleId) return scenario.learnerRoleId;
+  const roles = await prisma.role.findMany({ where: { scenarioId }, orderBy: { displayOrder: 'asc' }, select: { id: true } });
+  if (roles.length === 0) return null;
+  return roles.find((r) => r.id !== personaRoleId)?.id ?? null;
 }

@@ -11,8 +11,10 @@ uses the word. Terms marked **(open)** are proposed and awaiting a decision; see
   this a "world". *Scenario* is the canonical term.
 - **Persona** (settled) — One AI counterpart inside a Scenario, with a name, description,
   personality characteristics, and an initial greeting. A Scenario has one or more Personas.
-- **Role** (settled, unused in play) — A side in a Scenario with a confidential brief. A Persona
-  may belong to a Role. Today the learner always plays the fixed `userRole`; nobody picks a side.
+- **Role** (settled) — A side in a Scenario with a confidential brief. A Persona belongs to a Role;
+  a Conversation records the Role the learner played. The Scenario's `learnerRoleId` names the
+  side Issues call "learner". Briefs carry story; Issues carry numbers. There is no per-session
+  side chooser yet.
 - **Learner** (settled) — A signed-in user with role `user` who practices.
 - **Admin** (settled) — A signed-in user with role `admin` who authors and reviews.
 - **Author** (settled, informal) — Whoever creates a Scenario (admin today; learners via a
