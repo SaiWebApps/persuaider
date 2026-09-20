@@ -391,3 +391,45 @@ describe('generateScenarioFromDocument', () => {
     ).rejects.toThrow('LLM unavailable');
   });
 });
+
+describe('parseGenerationResponse: sides and numbers', () => {
+  const { parseGenerationResponse: parse } = jest.requireActual('../generation') as typeof import('../generation');
+  const base = {
+    title: 'Used car',
+    roles: [
+      { name: 'Buyer', description: 'You need a car this week.' },
+      { name: 'Seller', description: 'You are moving abroad.' },
+    ],
+    learnerRole: 'Buyer',
+    issues: [
+      { name: 'Price', unit: 'USD', learnerWants: 'lower', learner: { target: 7000, reservation: 8500, weight: 100 }, counterpart: { target: 9500, reservation: 8000, weight: 100 } },
+    ],
+    personas: [{ name: 'Sam', description: 'd', roleType: 'Seller', role: 'Seller' }],
+  };
+
+  it('keeps sides, the learner side, valid issues and persona sides', () => {
+    const out = parse(JSON.stringify(base))!;
+    expect(out.roles.map((r) => r.name)).toEqual(['Buyer', 'Seller']);
+    expect(out.learnerRoleName).toBe('Buyer');
+    expect(out.issues).toHaveLength(1);
+    expect(out.issues[0].learner.reservation).toBe(8500);
+    expect(out.personas[0].roleName).toBe('Seller');
+  });
+
+  it('drops an issue whose numbers contradict its direction, keeps the rest', () => {
+    const bad = { ...base, issues: [...base.issues, { name: 'Delivery days', learnerWants: 'lower', learner: { target: 10, reservation: 5, weight: 50 }, counterpart: { target: 3, reservation: 7, weight: 50 } }] };
+    expect(parse(JSON.stringify(bad))!.issues.map((i) => i.name)).toEqual(['Price']);
+  });
+
+  it('infers the learner side as the role no persona plays when learnerRole is missing or wrong', () => {
+    expect(parse(JSON.stringify({ ...base, learnerRole: 'Referee' }))!.learnerRoleName).toBe('Buyer');
+    const { learnerRole, ...noLearner } = base; void learnerRole;
+    expect(parse(JSON.stringify(noLearner))!.learnerRoleName).toBe('Buyer');
+  });
+
+  it('has no learner side and no issues when the reply omits them', () => {
+    const out = parse(JSON.stringify({ title: 'T', personas: [] }))!;
+    expect(out.learnerRoleName).toBeNull();
+    expect(out.issues).toEqual([]);
+  });
+});

@@ -7,12 +7,13 @@ jest.mock('@/lib/auth', () => ({ auth: () => mockAuthFn() }));
 
 const mockScenario = { create: jest.fn(), findUnique: jest.fn() };
 const mockPersona = { create: jest.fn() };
+const mockRole = { create: jest.fn() };
 const mockUserScenario = { create: jest.fn(), findUnique: jest.fn() };
 const mockUserDb = { findUnique: jest.fn() };
 
 jest.mock('@/lib/db/client', () => ({
   get prisma() {
-    return { scenario: mockScenario, persona: mockPersona, userScenario: mockUserScenario, user: mockUserDb };
+    return { scenario: mockScenario, persona: mockPersona, role: mockRole, userScenario: mockUserScenario, user: mockUserDb };
   },
 }));
 
@@ -66,5 +67,41 @@ describe('POST /api/scenarios (user create)', () => {
     mockScenario.create.mockResolvedValue({ id: 's1', title: 'Test', joinCode: 'X' });
     await POST(req({ title: 'T', description: 'D', userRole: 'U', aiRole: 'A' }));
     expect(mockUserScenario.create).toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/scenarios - sides', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUserDb.findUnique.mockResolvedValue({ emailVerified: new Date() });
+    mockScenario.create.mockResolvedValue({ id: 's-new', joinCode: 'ABCD' });
+    mockScenario.update = jest.fn().mockResolvedValue({});
+    mockRole.create.mockResolvedValueOnce({ id: 'r-buyer' }).mockResolvedValueOnce({ id: 'r-seller' });
+    mockPersona.create.mockResolvedValue({ id: 'p1' });
+    mockUserScenario.create.mockResolvedValue({});
+  });
+  const body = {
+    title: 'Used car', description: 'd', userRole: 'Buyer', aiRole: 'Seller',
+    roles: [{ name: 'Buyer', description: 'brief A' }, { name: 'Seller', description: 'brief B' }],
+    learnerRoleName: 'Buyer',
+    personas: [{ name: 'Sam', roleType: 'Seller', roleName: 'Seller' }],
+  };
+  const post = (b: unknown) => POST(new Request('http://localhost/api/scenarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }));
+
+  it('creates roles, marks the learner side, and links each persona to its side', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
+    const res = await post(body);
+    expect(res.status).toBe(201);
+    expect(mockRole.create).toHaveBeenCalledTimes(2);
+    expect(mockRole.create.mock.calls[0][0].data).toMatchObject({ scenarioId: 's-new', name: 'Buyer', description: 'brief A', displayOrder: 1 });
+    expect(mockScenario.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 's-new' }, data: { learnerRoleId: 'r-buyer' } }));
+    expect(mockPersona.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ roleId: 'r-seller' }) }));
+  });
+
+  it('rejects a learner side or persona side that is not one of the roles', async () => {
+    mockAuthFn.mockResolvedValue({ user: { id: 'u1' } });
+    expect((await post({ ...body, learnerRoleName: 'Referee' })).status).toBe(400);
+    expect((await post({ ...body, personas: [{ name: 'Sam', roleName: 'Referee' }] })).status).toBe(400);
+    expect(mockScenario.create).not.toHaveBeenCalled();
   });
 });

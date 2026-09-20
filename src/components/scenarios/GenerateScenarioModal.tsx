@@ -177,6 +177,66 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
               data-testid="edit-ai-role"
             />
           </div>
+          {(generatedScenario.roles ?? []).length > 0 && (
+            <div data-testid="sides-preview">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Sides {generatedScenario.learnerRoleName ? `(you play: ${generatedScenario.learnerRoleName})` : ''}
+              </label>
+              <div className="space-y-2">
+                {generatedScenario.roles.map((role, idx) => (
+                  <div key={idx} className="p-2 border border-gray-200 dark:border-gray-600 rounded text-sm" data-testid={'side-' + idx}>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{role.name}</span>
+                    {role.name === generatedScenario.learnerRoleName && <span className="ml-2 text-xs text-indigo-700 dark:text-indigo-300">you</span>}
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">{role.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(generatedScenario.issues ?? []).length > 0 && (
+            <div data-testid="issues-preview">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Numbers (confirm or edit; the counterpart never sees yours, you never see theirs during play)
+              </label>
+              <div className="space-y-3">
+                {generatedScenario.issues.map((issue, idx) => {
+                  const setNumber = (side: 'learner' | 'counterpart', key: 'target' | 'reservation', value: string) => {
+                    const n = Number(value);
+                    if (!Number.isFinite(n)) return;
+                    const issues = generatedScenario.issues.map((it, i) => (i === idx ? { ...it, [side]: { ...it[side], [key]: n } } : it));
+                    setGeneratedScenario({ ...generatedScenario, issues });
+                  };
+                  const field = (side: 'learner' | 'counterpart', key: 'target' | 'reservation') => (
+                    <label className="flex flex-col text-xs text-gray-600 dark:text-gray-400">
+                      {side === 'learner' ? 'Your' : 'Their'} {key === 'target' ? 'target' : 'walk-away'}
+                      <input
+                        type="number"
+                        value={issue[side][key]}
+                        onChange={(e) => setNumber(side, key, e.target.value)}
+                        data-testid={`issue-${idx}-${side}-${key}`}
+                        className="mt-1 w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                    </label>
+                  );
+                  return (
+                    <div key={idx} className="p-2 border border-gray-200 dark:border-gray-600 rounded text-sm" data-testid={'issue-' + idx}>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
+                        {issue.name}
+                        {issue.unit ? <span className="text-gray-500 dark:text-gray-400 ml-1">({issue.unit})</span> : null}
+                        <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">you want it {issue.learnerWants}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-3">
+                        {field('learner', 'target')}
+                        {field('learner', 'reservation')}
+                        {field('counterpart', 'target')}
+                        {field('counterpart', 'reservation')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {generatedScenario.personas.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -193,7 +253,7 @@ export function GenerateScenarioModal({ isOpen, onClose, onSave }: GenerateScena
                       {persona.name}
                     </span>
                     <span className="text-gray-500 dark:text-gray-400 ml-2">
-                      ({persona.roleType})
+                      ({persona.roleType}{persona.roleName ? ` · plays ${persona.roleName}` : ''})
                     </span>
                   </div>
                 ))}

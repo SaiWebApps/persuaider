@@ -81,6 +81,20 @@ export interface GeneratedRole {
   description: string;
 }
 
+export interface GeneratedIssueSide {
+  target: number;
+  reservation: number;
+  weight: number;
+}
+
+export interface GeneratedIssue {
+  name: string;
+  unit?: string;
+  learnerWants: 'higher' | 'lower';
+  learner: GeneratedIssueSide;
+  counterpart: GeneratedIssueSide;
+}
+
 export interface GeneratedScenario {
   title: string;
   description: string;
@@ -89,7 +103,11 @@ export interface GeneratedScenario {
   initialGreeting: string;
   evaluationCriteria: EvaluationCriteria;
   winCondition: WinCondition;
-  roles: GeneratedRole[];          // Formal role definitions
+  roles: GeneratedRole[];          // Sides with confidential briefs
+  /** Which role the trainee plays; every persona plays the other side. */
+  learnerRoleName: string | null;
+  /** Negotiable issues with hidden numbers per side; the author confirms them. */
+  issues: GeneratedIssue[];
   personas: GeneratedPersona[];
 }
 
@@ -99,6 +117,8 @@ export interface GeneratedPersona {
   roleType: string;
   initialGreeting: string;
   characteristics: PersonaCharacteristics;
+  /** The side this persona plays, by role name. */
+  roleName?: string;
 }
 
 // --- Extended types with relations ---
