@@ -256,7 +256,7 @@ export async function generateScenario(description: string, meter?: Meter): Prom
     // Sent as the user turn: Anthropic requires at least one non-system message,
       // and a system-only call is rejected with a 400.
       [{ role: 'user' as const, content: prompt }],
-    { temperature: 0.7, maxTokens: 4000 }
+    { temperature: 0.7, maxTokens: 8000 }
   );
 
   if (meter) await recordLlmCall(meter, response);
@@ -301,7 +301,7 @@ export async function generateScenarioFromDocument(
     // Sent as the user turn: Anthropic requires at least one non-system message,
       // and a system-only call is rejected with a 400.
       [{ role: 'user' as const, content: prompt }],
-    { temperature: 0.7, maxTokens: 4000 }
+    { temperature: 0.7, maxTokens: 8000 }
   );
 
   if (meter) await recordLlmCall(meter, response);

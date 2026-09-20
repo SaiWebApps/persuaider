@@ -75,6 +75,34 @@ export default async function globalSetup() {
   const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
   const db = new PrismaClient();
   try {
+    // The Clerk development instance allows 100 users. Every run signs up throwaway
+    // users (+clerk_test sign-ups, admin-created testuser-*@test.com); remove the ones
+    // left by earlier runs so the cap is never hit.
+    let removedUsers = 0;
+    try {
+      for (let offset = 0; ; ) {
+        const page = await clerkClient.users.getUserList({ limit: 100, offset });
+        for (const u of page.data) {
+          const throwaway = u.emailAddresses.some((e) => /\+clerk_test/i.test(e.emailAddress) || /^testuser-\d+@test\.com$/i.test(e.emailAddress));
+          if (!throwaway) {
+            offset++;
+            continue;
+          }
+          try {
+            await clerkClient.users.deleteUser(u.id);
+            removedUsers++;
+          } catch {
+            // transient Clerk error: leave it for the next run
+          }
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        if (page.data.length < 100) break;
+      }
+    } catch (error) {
+      console.warn('    WARNING: could not list Clerk users for cleanup', (error as Error).message);
+    }
+    if (removedUsers) console.log(`    removed ${removedUsers} throwaway Clerk user(s) left by earlier runs`);
+
     // Scenarios created by earlier E2E runs (all titled "E2E …") are removed so counts stay predictable.
     const removed = await db.scenario.deleteMany({ where: { title: { startsWith: 'E2E ' } } });
     // Each run starts with a clean daily budget for the test users.

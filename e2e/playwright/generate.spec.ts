@@ -9,17 +9,17 @@ import { loginAsDemo } from './helpers';
  *  3. Opening one of its personas shows "You play" and the confidential brief.
  */
 test('generate a scenario with sides and numbers, save it, play it', async ({ page }) => {
-  test.setTimeout(240000);
+  test.setTimeout(300000);
   await loginAsDemo(page);
 
   await page.locator('[data-testid="generate-with-ai"]').click();
-  await page.locator('textarea, input[type="text"]').first().fill(
+  await page.locator('[role="dialog"] textarea').first().fill(
     'E2E Buying a used car from a private seller who is relocating next week. I want a fair price and a quick handover.'
   );
   await page.locator('[data-testid="generate-button"]').click();
 
   const preview = page.locator('[data-testid="scenario-preview"]');
-  await expect(preview).toBeVisible({ timeout: 90000 });
+  await expect(preview).toBeVisible({ timeout: 150000 });
   await expect(page.locator('[data-testid="sides-preview"]')).toContainText('you play');
   await expect(page.locator('[data-testid="issues-preview"]')).toBeVisible();
   const learnerTarget = page.locator('[data-testid="issue-0-learner-target"]');
