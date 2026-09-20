@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: persuaider
+      POSTGRES_PASSWORD: persuaider
+      POSTGRES_DB: persuaider
+    ports:
+      - "5432:5432"
+    volumes:
+      - persuaider-pg:/var/lib/postgresql/data
+volumes:
+  persuaider-pg:

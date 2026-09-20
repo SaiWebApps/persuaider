@@ -12,8 +12,8 @@ make dev
 
 This command automatically:
 - Installs all dependencies
-- Creates `.env.local` with sensible defaults (SQLite for local dev)
-- Sets up and seeds the database with demo scenarios
+- Creates `.env.local` with sensible defaults
+- Starts Postgres in Docker, sets up and seeds the database with demo scenarios
 - Starts the development server
 
 Then add your API keys to `.env.local`:
@@ -32,6 +32,7 @@ Visit **http://localhost:3000**
 
 - **Node.js** v18 or later - [Download here](https://nodejs.org/)
 - **Make** (pre-installed on macOS/Linux)
+- **Docker** (for the local Postgres)
 - **LLM API Key**: At least one of [Anthropic](https://console.anthropic.com/) (recommended), [Google AI](https://ai.google.dev/), or [OpenAI](https://platform.openai.com/)
 
 ### Alternative: Full Control Setup
@@ -43,17 +44,22 @@ make dev      # Start development server
 
 ## Login
 
-**Admin**: Login with credentials from `.env.local` (`ADMIN_USERNAME` / `ADMIN_PASSWORD`)
-**Users**: Created by admin with auto-generated credentials
+Sign up at `/register` with any email. Clerk handles verification; the app creates your
+account on first sign-in. Locally with no Clerk keys, the app runs in Clerk keyless mode and
+prints a claim link the first time it starts.
+
+**Make yourself an admin** (after signing in once):
+```bash
+make promote-admin EMAIL=you@example.com
+```
 
 ### Admin Workflow
-1. Login to admin dashboard
+1. Open `/admin`
 2. Create scenarios with custom personas, evaluation frameworks, and scoring criteria
-3. Go to "Accounts" to create user accounts and assign them to scenarios
-4. Share generated credentials with team members
+3. Go to "Users" to create accounts for team members and assign them to scenarios
 
 ### User Workflow
-1. Login with provided credentials
+1. Sign in, or join a scenario with its join code
 2. Select a scenario and persona to practice with
 3. Negotiate using the techniques from the scenario's evaluation frameworks
 4. End the session to receive an LLM-evaluated performance summary
@@ -140,7 +146,7 @@ make setup         # Complete project setup from scratch
 make db-studio     # Open database GUI
 make db-reset      # Reset database with fresh data
 make build         # Build for production
-make test          # Run all tests (unit + E2E)
+make test          # Unit tests
 ```
 
 Run `make help` for the full list.
@@ -148,15 +154,13 @@ Run `make help` for the full list.
 ## Testing
 
 ```bash
-make test              # Run ALL tests (unit + Selenium E2E)
-make test-unit         # Unit tests only (fast, no server needed)
-make test-e2e          # Selenium E2E tests (headless, auto-starts server)
-make test-e2e-visible  # Selenium E2E with visible browser (debugging)
-make test-e2e-pw       # Playwright E2E tests (headless, auto-starts server)
+make test              # Unit tests (fast, offline). This is what CI runs.
+make test-e2e          # Playwright against a live dev server (needs Clerk + DB + one LLM key)
+make test-e2e-visible  # Same, with a visible browser
 make test-coverage     # Unit tests with coverage report
 ```
 
-Both **Selenium** and **Playwright** E2E test suites are available. Selenium tests cover the full user flow; Playwright tests provide additional functional coverage with built-in auto-waiting and `data-testid` selectors.
+GitHub Actions runs typecheck, lint, unit tests, and build on every push and pull request.
 
 ## Development Workflow
 
@@ -196,10 +200,10 @@ Set environment variables in Vercel, connect PostgreSQL (Neon/Supabase), run `np
 ## Tech Stack
 
 - Next.js 16 + TypeScript + Tailwind CSS
-- Prisma ORM (SQLite dev, PostgreSQL prod)
-- NextAuth.js
+- Prisma ORM + PostgreSQL (Neon in production, Docker locally)
+- Clerk (authentication)
 - Multi-provider LLM (Claude Sonnet 4.5, Gemini 2.0 Flash, GPT-5.2 Instant)
-- Selenium + Playwright E2E testing
+- Playwright E2E testing
 - Vercel (free tier supports 50+ users)
 
 ## Cost
@@ -231,7 +235,7 @@ prisma/
 | Issue | Solution |
 |-------|----------|
 | No AI responses | Add at least one LLM API key to `.env.local` and restart |
-| Login fails | Run `make db-reset` to reset database |
+| Login fails | Check the server log: auth errors are logged with an `[auth]` prefix |
 | Database errors | Run `make db-reset` or `make clean-db && make dev` |
 | Module errors | Run `make clean && make dev` |
 | Environment issues | Delete `.env.local` and run `make setup` |
@@ -241,5 +245,5 @@ prisma/
 
 - All `make` commands automatically install dependencies and setup environment
 - Use `make help` to see all available commands with descriptions
-- SQLite is used for local development (no external database needed)
+- `make db-up` runs Postgres in Docker for local development
 - PostgreSQL is recommended for production deployments
