@@ -21,7 +21,7 @@ const PROBES: string[] = [
 // A commitment is first person: "I can offer", "we'll approve", "let me go to", "I'm willing to accept".
 // A bare noun ("your offer at $160,000") is not.
 const ACCEPTING = /\b(?:I|we|I['\u2019]ll|I['\u2019]d|we['\u2019]ll|we['\u2019]d|I['\u2019]m|let me|my (?:best|final|counter)?\s?offer (?:is|would be|stands at))\b(?:\s+\w+){0,3}?\s*\b(offer|offering|approve|approved|authorize|authorized|agree|agreed|accept|counter(?:offer)?|propose|propos(?:e|ing)|do|give you|go to|go up to|come up to|stretch to|meet you at|bring you to|make it|raise you to|put you at|increase (?:it )?to|move (?:you )?to|get you to|confirm|sign off|settle (?:on|at)|is|would be|stands at)\b/i;
-const NEGATED = /\b(not|n['\u2019]t|never|no|nothing|without|refuse|decline|cannot|unable|wish|ideally|if I could|if only|hands are tied|can['\u2019]t|won['\u2019]t|don['\u2019]t|doesn['\u2019]t|isn['\u2019]t|haven['\u2019]t|wouldn['\u2019]t|couldn['\u2019]t)\b/i;
+const NEGATED = /\b(not|n['\u2019]t|never|no|nothing|without|refuse|decline|cannot|unable|wish|ideally|if I could|if only|hands are tied|outside|beyond|above|over|exceeds?|more than|too high|off the table|not happening|can['\u2019]t|won['\u2019]t|don['\u2019]t|doesn['\u2019]t|isn['\u2019]t|haven['\u2019]t|wouldn['\u2019]t|couldn['\u2019]t)\b/i;
 
 /** "$118,000", "$118000", "$118k", "118,000 dollars" → 118000 */
 function dollarFigures(text: string): number[] {

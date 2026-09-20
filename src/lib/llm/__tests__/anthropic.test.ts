@@ -176,3 +176,15 @@ describe('AnthropicProvider', () => {
     });
   });
 });
+
+describe('AnthropicProvider content blocks', () => {
+  it('joins all text blocks and ignores non-text blocks', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'thinking', thinking: '...' }, { type: 'text', text: 'Hello ' }, { type: 'text', text: 'there' }],
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+    const provider = new AnthropicProvider('key');
+    const r = await provider.generateResponse([{ role: 'user', content: 'hi' }]);
+    expect(r.content).toBe('Hello there');
+  });
+});

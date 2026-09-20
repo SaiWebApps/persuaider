@@ -33,7 +33,11 @@ export class AnthropicProvider implements LLMProvider {
         })),
       });
 
-      const content = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      // Newer models may return several blocks (e.g. a non-text block first); keep every text block.
+      const content = response.content
+        .filter((block): block is Extract<typeof block, { type: 'text' }> => block.type === 'text')
+        .map((block) => block.text)
+        .join('');
 
       return {
         content,
