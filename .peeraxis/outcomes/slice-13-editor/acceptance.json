@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "task": "Slice 13: in the creator's existing scenario editor, make each Issue's name and unit editable, let the creator add and remove Issues, and let the creator edit each AI Persona's name, description, and initial greeting. Save all changes through the existing owner-authorized routes and show Saved only after every Scenario and Persona write succeeds. Keep existing Issue direction/number validation, Scenario ownership checks, and Persona ownership checks intact. The locked browser acceptance describes the required preview demo; it must pass on a deployed preview before owner acceptance or merge.",
+  "lockedTests": {
+    "e2e/playwright/acceptance/slice-13.spec.ts": "78d204ae2faa0b5b67c8eee3ddbfb82381c63ea764d3d6e1c7f5a44dc17655ef",
+    "src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx": "4eeffae5c863455be9e627a6192f24e6d2cbe83eb5cc4c18ce9681d3e975f59c",
+    "src/app/api/__tests__/personas-core-edit.test.ts": "9aeaed20a3f8ba5e830bccb4f4fd212181ae37e5746b88b5a1a91d79bfdffaae",
+    "src/app/api/__tests__/personas-avatar.test.ts": "466f053d22367704555b35b921e1b15d1c78313c48604c144001d96547bb5b88",
+    "src/app/api/__tests__/scenarios-edit.test.ts": "1ca76d6bcb94034d4ae2a36413a53b884844fbccfcd5efe5d66d88827bafd14f"
+  },
+  "acceptanceCommand": "npm ci --prefer-offline --no-audit --no-fund && export DATABASE_URL=postgresql://ci:ci@localhost:5432/ci DATABASE_URL_UNPOOLED=postgresql://ci:ci@localhost:5432/ci NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2ktcGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA CLERK_SECRET_KEY=sk_test_ci_placeholder && npm test -- --runInBand --runTestsByPath 'src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx' src/app/api/__tests__/personas-core-edit.test.ts src/app/api/__tests__/personas-avatar.test.ts src/app/api/__tests__/scenarios-edit.test.ts && npm run typecheck && npm run build",
+  "allowedPaths": [
+    "src/app/(user)/scenario/[id]/edit/EditScenarioClient.tsx",
+    "src/app/(user)/scenario/[id]/edit/page.tsx",
+    "src/app/api/personas/[id]/route.ts",
+    "src/components/scenarios/IssueNumbersEditor.tsx"
+  ]
+}

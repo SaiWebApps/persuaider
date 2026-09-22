@@ -1,0 +1,58 @@
+# Slice report
+
+Result: fail
+
+Fact: builder failed with exit code 1; a path outside the allowed list or locked acceptance evidence was denied
+
+## Files changed and why
+
+- None applied.
+
+## Tests added and what each proves
+
+- Locked acceptance was not reached.
+
+## What the reviewer flagged
+
+- Review was not reached.
+
+## Recovery
+
+- Candidate retained at `/private/var/folders/jg/mnd310sj295djk1pbldxh7wh0000gn/T/peeraxis-slices/0f3ced03-57f6-4677-828a-ca9ab36a1111` because a required gate failed.
+- Next action: inspect the reported fact in that isolated candidate, then correct it or deliberately discard the candidate before retrying.
+
+# Outcome
+
+- Intended outcome: Slice 13: in the creator's existing scenario editor, make each Issue's name and unit editable, let the creator add and remove Issues, and let the creator edit each AI Persona's name, description, and initial greeting. Save all changes through the existing owner-authorized routes and show Saved only after every Scenario and Persona write succeeds. Keep existing Issue direction/number validation, Scenario ownership checks, and Persona ownership checks intact. The locked browser acceptance describes the required preview demo; it must pass on a deployed preview before owner acceptance or merge.
+- State: Stopped
+- Demonstrated: The run stopped on this observed fact: builder failed with exit code 1; a path outside the allowed list or locked acceptance evidence was denied.
+- Happening now: Execution is safely stopped with the trusted checkout unchanged.
+- Owner action: No owner action is required now.
+
+## Journey milestones
+
+- Demonstrated — Candidate: An isolated Candidate preserves the attempted improvement.
+- Pending — Locked proof: The approved acceptance command has not demonstrated the Outcome.
+- Pending — Independent review: Independent review has not authorized verification.
+- Blocked — Owner acceptance: Acceptance is unavailable until the failed gate is corrected.
+
+## Owner decisions
+
+- None recorded.
+
+## Evidence
+
+- Execution stopped before locked evidence completed.
+
+## Recovery state
+
+- Failure class: build
+- Summary: builder failed with exit code 1; a path outside the allowed list or locked acceptance evidence was denied
+- Retained state: The isolated Candidate is retained at `/private/var/folders/jg/mnd310sj295djk1pbldxh7wh0000gn/T/peeraxis-slices/0f3ced03-57f6-4677-828a-ca9ab36a1111`.
+- Safety status: The trusted checkout is unchanged.
+
+## Next action
+
+Inspect the reported fact in the isolated Candidate, then correct it or deliberately discard the Candidate before retrying.
+
+<!-- peeraxis-outcome-state:eyJzY2hlbWFWZXJzaW9uIjoxLCJzb3VyY2UiOiIucGVlcmF4aXMvb3V0Y29tZXMvc2xpY2UtMTMtZWRpdG9yIiwiaW50ZW5kZWRPdXRjb21lIjoiU2xpY2UgMTM6IGluIHRoZSBjcmVhdG9yJ3MgZXhpc3Rpbmcgc2NlbmFyaW8gZWRpdG9yLCBtYWtlIGVhY2ggSXNzdWUncyBuYW1lIGFuZCB1bml0IGVkaXRhYmxlLCBsZXQgdGhlIGNyZWF0b3IgYWRkIGFuZCByZW1vdmUgSXNzdWVzLCBhbmQgbGV0IHRoZSBjcmVhdG9yIGVkaXQgZWFjaCBBSSBQZXJzb25hJ3MgbmFtZSwgZGVzY3JpcHRpb24sIGFuZCBpbml0aWFsIGdyZWV0aW5nLiBTYXZlIGFsbCBjaGFuZ2VzIHRocm91Z2ggdGhlIGV4aXN0aW5nIG93bmVyLWF1dGhvcml6ZWQgcm91dGVzIGFuZCBzaG93IFNhdmVkIG9ubHkgYWZ0ZXIgZXZlcnkgU2NlbmFyaW8gYW5kIFBlcnNvbmEgd3JpdGUgc3VjY2VlZHMuIEtlZXAgZXhpc3RpbmcgSXNzdWUgZGlyZWN0aW9uL251bWJlciB2YWxpZGF0aW9uLCBTY2VuYXJpbyBvd25lcnNoaXAgY2hlY2tzLCBhbmQgUGVyc29uYSBvd25lcnNoaXAgY2hlY2tzIGludGFjdC4gVGhlIGxvY2tlZCBicm93c2VyIGFjY2VwdGFuY2UgZGVzY3JpYmVzIHRoZSByZXF1aXJlZCBwcmV2aWV3IGRlbW87IGl0IG11c3QgcGFzcyBvbiBhIGRlcGxveWVkIHByZXZpZXcgYmVmb3JlIG93bmVyIGFjY2VwdGFuY2Ugb3IgbWVyZ2UuIiwic3RhdGUiOiJzdG9wcGVkIiwiZGVtb25zdHJhdGVkIjoiVGhlIHJ1biBzdG9wcGVkIG9uIHRoaXMgb2JzZXJ2ZWQgZmFjdDogYnVpbGRlciBmYWlsZWQgd2l0aCBleGl0IGNvZGUgMTsgYSBwYXRoIG91dHNpZGUgdGhlIGFsbG93ZWQgbGlzdCBvciBsb2NrZWQgYWNjZXB0YW5jZSBldmlkZW5jZSB3YXMgZGVuaWVkLiIsImhhcHBlbmluZ05vdyI6IkV4ZWN1dGlvbiBpcyBzYWZlbHkgc3RvcHBlZCB3aXRoIHRoZSB0cnVzdGVkIGNoZWNrb3V0IHVuY2hhbmdlZC4iLCJvd25lckFjdGlvbiI6bnVsbCwib3duZXJEZWNpc2lvbnMiOltdLCJqb3VybmV5TWlsZXN0b25lcyI6W3sibmFtZSI6IkNhbmRpZGF0ZSIsInN0YXR1cyI6ImRlbW9uc3RyYXRlZCIsInZpc2libGVSZXN1bHQiOiJBbiBpc29sYXRlZCBDYW5kaWRhdGUgcHJlc2VydmVzIHRoZSBhdHRlbXB0ZWQgaW1wcm92ZW1lbnQuIn0seyJuYW1lIjoiTG9ja2VkIHByb29mIiwic3RhdHVzIjoicGVuZGluZyIsInZpc2libGVSZXN1bHQiOiJUaGUgYXBwcm92ZWQgYWNjZXB0YW5jZSBjb21tYW5kIGhhcyBub3QgZGVtb25zdHJhdGVkIHRoZSBPdXRjb21lLiJ9LHsibmFtZSI6IkluZGVwZW5kZW50IHJldmlldyIsInN0YXR1cyI6InBlbmRpbmciLCJ2aXNpYmxlUmVzdWx0IjoiSW5kZXBlbmRlbnQgcmV2aWV3IGhhcyBub3QgYXV0aG9yaXplZCB2ZXJpZmljYXRpb24uIn0seyJuYW1lIjoiT3duZXIgYWNjZXB0YW5jZSIsInN0YXR1cyI6ImJsb2NrZWQiLCJ2aXNpYmxlUmVzdWx0IjoiQWNjZXB0YW5jZSBpcyB1bmF2YWlsYWJsZSB1bnRpbCB0aGUgZmFpbGVkIGdhdGUgaXMgY29ycmVjdGVkLiJ9XSwiZXZpZGVuY2UiOlsiRXhlY3V0aW9uIHN0b3BwZWQgYmVmb3JlIGxvY2tlZCBldmlkZW5jZSBjb21wbGV0ZWQuIl0sInJlY292ZXJ5Ijp7ImZhaWx1cmVDbGFzcyI6ImJ1aWxkIiwic3VtbWFyeSI6ImJ1aWxkZXIgZmFpbGVkIHdpdGggZXhpdCBjb2RlIDE7IGEgcGF0aCBvdXRzaWRlIHRoZSBhbGxvd2VkIGxpc3Qgb3IgbG9ja2VkIGFjY2VwdGFuY2UgZXZpZGVuY2Ugd2FzIGRlbmllZCIsInJldGFpbmVkU3RhdGUiOiJUaGUgaXNvbGF0ZWQgQ2FuZGlkYXRlIGlzIHJldGFpbmVkIGF0IGAvcHJpdmF0ZS92YXIvZm9sZGVycy9qZy9tbmQzMTBzajI5NWRqazFwYmxkeGg3d2gwMDAwZ24vVC9wZWVyYXhpcy1zbGljZXMvMGYzY2VkMDMtNTdmNi00Njc3LTgyOGEtY2E5YWIzNmExMTExYC4iLCJzYWZldHlTdGF0dXMiOiJUaGUgdHJ1c3RlZCBjaGVja291dCBpcyB1bmNoYW5nZWQuIn0sIm5leHRBY3Rpb24iOiJJbnNwZWN0IHRoZSByZXBvcnRlZCBmYWN0IGluIHRoZSBpc29sYXRlZCBDYW5kaWRhdGUsIHRoZW4gY29ycmVjdCBpdCBvciBkZWxpYmVyYXRlbHkgZGlzY2FyZCB0aGUgQ2FuZGlkYXRlIGJlZm9yZSByZXRyeWluZy4iLCJ1cGRhdGVkQXQiOiIyMDI2LTA5LTIyVDAyOjU0OjI3LjAwOTc0MiswMDowMCJ9 -->
