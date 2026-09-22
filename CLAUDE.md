@@ -1,7 +1,10 @@
 # Working rules for Persuaider
 
-The owner does not review code or implementation plans. Progress is judged only by
-behavior they can see in a browser. Read `CONTEXT.md` for vocabulary and
+The owner's only job is to run through a demo. They never read a PR, a diff, a reviewer
+report, code, or a plan, and are never asked to decide anything on GitHub. Every gate is a
+machine (CI, branch protection, reviewer agents) or it does not exist. If a rule needs the
+owner to check something, the rule is wrong. Progress is judged only by behavior they can
+click through in a browser, and every report to them is a URL plus numbered click steps. Read `CONTEXT.md` for vocabulary and
 `docs/plans/2026-09-19-assessment-and-plan.md` for the plan and decisions.
 
 ## Unit of work: a slice
@@ -77,6 +80,26 @@ Gate order per slice: typecheck, build, unit, integration, Playwright on preview
 - Engine code lives in `src/engine/` and may not import Next.js or Prisma.
 - No engine work until ten strangers have completed a practice session on the preview and
   five say the opponent felt real.
+
+## Demo gate (2026-09-20, owner's rule): the steps are the test
+
+- The PR body's numbered acceptance steps are generated from the slice's acceptance spec
+  (`e2e/playwright/acceptance/slice-NN.spec.ts`). Each step is a `test.step` whose title is the
+  step text and which contains at least one assertion. `scripts/check-acceptance.mjs` fails CI
+  if a step in the PR body is missing from the spec, reworded, or has no assertion, and after
+  the run fails CI if the Playwright report does not show every step passed.
+- Acceptance specs run with zero retries. Assertions about LLM replies are structural (a reply
+  arrived, it contains a figure), never semantic.
+- The acceptance spec also runs against the PR's Vercel preview URL; that status is required.
+- `main` is protected: required checks, no admin bypass. Nobody merges red, including me.
+- A parked item ("Noticed, not done") with reviewer severity high blocks the merge and becomes
+  the next slice. The owner is never asked to park anything.
+- Each reviewer agent posts its full report as its own PR comment under a fixed heading; a
+  status check requires both. The owner never reads them.
+- A PR with more than six CI runs and no green is labelled `blocked`; work stops and the
+  eight-line report says so.
+- Spend is capped in the app: per-user daily budget plus a global daily cap. No gate depends
+  on the owner touching a provider console.
 
 ## Review gate (2026-09-20, owner's rule)
 
