@@ -1,40 +1,41 @@
 # Slice report
 
-Result: fail
-
-Fact: builder failed with exit code 1; a path outside the allowed list or locked acceptance evidence was denied
+Result: pass
 
 ## Files changed and why
 
-- None applied.
+- src/app/(user)/scenario/[id]/edit/EditScenarioClient.tsx: produced by the one build attempt.
+- src/app/(user)/scenario/[id]/edit/page.tsx: produced by the one build attempt.
+- src/app/api/personas/[id]/route.ts: produced by the one build attempt.
+- src/components/scenarios/IssueNumbersEditor.tsx: produced by the one build attempt.
 
 ## Tests added and what each proves
 
-- Locked acceptance was not reached.
+- Locked acceptance command `npm ci --prefer-offline --no-audit --no-fund && export DATABASE_URL=postgresql://ci:ci@localhost:5432/ci DATABASE_URL_UNPOOLED=postgresql://ci:ci@localhost:5432/ci NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2ktcGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA CLERK_SECRET_KEY=sk_test_ci_placeholder && npm test -- --runInBand --runTestsByPath 'src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx' src/app/api/__tests__/personas-core-edit.test.ts src/app/api/__tests__/personas-avatar.test.ts src/app/api/__tests__/scenarios-edit.test.ts && npm run typecheck && npm run build` exited 0. Output fingerprint: 71242e5c390e49b3647ca607b0244b49232707762e4a621eb68eb69df2fbc2a2.
 
 ## What the reviewer flagged
 
-- Review was not reached.
+- Nothing. The four changed files implement Slice 13 correctly: EditScenarioClient.tsx adds editable Issue name/unit fields with add/remove controls (via IssueNumbersEditor's new editableIssues mode), editable Persona name/description/initialGreeting fields, and a save flow that PATCHes the scenario first, then each persona sequentially, only setting "Saved." after every write succeeds (aborting on the first failure). The personas PATCH route retains its ownership check (admin or scenario.createdById) and adds strict validation for name/description length before writing. The scenario PATCH route (unchanged, outside allowedPaths) retains issue direction/number validation via issueWithDirectionSchema and ownership checks. All data-testids in the implementation match those referenced in the locked Playwright acceptance spec (issue-N-name/unit, remove-issue-N, add-issue, persona-N-name/description/greeting, edit-save, edit-saved) and the locked jest unit test. Changed paths exactly match the acceptance.json allowedPaths list, so no scope creep. No weakening of existing validation or ownership checks was found.
 
-## Recovery
+## Candidate
 
-- Candidate retained at `/private/var/folders/jg/mnd310sj295djk1pbldxh7wh0000gn/T/peeraxis-slices/0f3ced03-57f6-4677-828a-ca9ab36a1111` because a required gate failed.
-- Next action: inspect the reported fact in that isolated candidate, then correct it or deliberately discard the candidate before retrying.
+- Candidate retained at `/Users/sairambkrishnan/git/persuaider` at exact commit `334d597500202b04da56c0b95c9e69c5382183fc`, based on trusted commit `83708dafa0fe52f4a92a95c8832a35a744be1fa2`, pending owner acceptance.
+- Changes are retained in the existing project; no automatic rollback was performed.
 
 # Outcome
 
 - Intended outcome: Slice 13: in the creator's existing scenario editor, make each Issue's name and unit editable, let the creator add and remove Issues, and let the creator edit each AI Persona's name, description, and initial greeting. Save all changes through the existing owner-authorized routes and show Saved only after every Scenario and Persona write succeeds. Keep existing Issue direction/number validation, Scenario ownership checks, and Persona ownership checks intact. The locked browser acceptance describes the required preview demo; it must pass on a deployed preview before owner acceptance or merge.
-- State: Stopped
-- Demonstrated: The run stopped on this observed fact: builder failed with exit code 1; a path outside the allowed list or locked acceptance evidence was denied.
-- Happening now: Execution is safely stopped with the trusted checkout unchanged.
-- Owner action: No owner action is required now.
+- State: Verified
+- Demonstrated: The saved version passed the recorded checks and independent review; owner acceptance is still pending.
+- Happening now: The verified version is saved in this project and waiting for the owner's decision.
+- Owner action: Review the demonstrated result, then accept or reject the exact reported Candidate commit.
 
 ## Journey milestones
 
-- Demonstrated — Candidate: An isolated Candidate preserves the attempted improvement.
-- Pending — Locked proof: The approved acceptance command has not demonstrated the Outcome.
-- Pending — Independent review: Independent review has not authorized verification.
-- Blocked — Owner acceptance: Acceptance is unavailable until the failed gate is corrected.
+- Demonstrated — Candidate: The project preserves the attempted improvement.
+- Demonstrated — Locked proof: The approved acceptance command passed.
+- Demonstrated — Independent review: A fresh reviewer returned a valid Pass with no unresolved blocker.
+- Pending — Owner acceptance: The exact verified Candidate awaits the owner's decision.
 
 ## Owner decisions
 
@@ -42,17 +43,13 @@ Fact: builder failed with exit code 1; a path outside the allowed list or locked
 
 ## Evidence
 
-- Execution stopped before locked evidence completed.
-
-## Recovery state
-
-- Failure class: build
-- Summary: builder failed with exit code 1; a path outside the allowed list or locked acceptance evidence was denied
-- Retained state: The isolated Candidate is retained at `/private/var/folders/jg/mnd310sj295djk1pbldxh7wh0000gn/T/peeraxis-slices/0f3ced03-57f6-4677-828a-ca9ab36a1111`.
-- Safety status: The trusted checkout is unchanged.
+- Observed changed paths: src/app/(user)/scenario/[id]/edit/EditScenarioClient.tsx, src/app/(user)/scenario/[id]/edit/page.tsx, src/app/api/personas/[id]/route.ts, src/components/scenarios/IssueNumbersEditor.tsx.
+- Locked command `npm ci --prefer-offline --no-audit --no-fund && export DATABASE_URL=postgresql://ci:ci@localhost:5432/ci DATABASE_URL_UNPOOLED=postgresql://ci:ci@localhost:5432/ci NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2ktcGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA CLERK_SECRET_KEY=sk_test_ci_placeholder && npm test -- --runInBand --runTestsByPath 'src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx' src/app/api/__tests__/personas-core-edit.test.ts src/app/api/__tests__/personas-avatar.test.ts src/app/api/__tests__/scenarios-edit.test.ts && npm run typecheck && npm run build` exited 0 with output fingerprint 71242e5c390e49b3647ca607b0244b49232707762e4a621eb68eb69df2fbc2a2.
+- Independent review: The four changed files implement Slice 13 correctly: EditScenarioClient.tsx adds editable Issue name/unit fields with add/remove controls (via IssueNumbersEditor's new editableIssues mode), editable Persona name/description/initialGreeting fields, and a save flow that PATCHes the scenario first, then each persona sequentially, only setting "Saved." after every write succeeds (aborting on the first failure). The personas PATCH route retains its ownership check (admin or scenario.createdById) and adds strict validation for name/description length before writing. The scenario PATCH route (unchanged, outside allowedPaths) retains issue direction/number validation via issueWithDirectionSchema and ownership checks. All data-testids in the implementation match those referenced in the locked Playwright acceptance spec (issue-N-name/unit, remove-issue-N, add-issue, persona-N-name/description/greeting, edit-save, edit-saved) and the locked jest unit test. Changed paths exactly match the acceptance.json allowedPaths list, so no scope creep. No weakening of existing validation or ownership checks was found.
+- Candidate `/Users/sairambkrishnan/git/persuaider` is retained at exact commit `334d597500202b04da56c0b95c9e69c5382183fc`.
 
 ## Next action
 
-Inspect the reported fact in the isolated Candidate, then correct it or deliberately discard the Candidate before retrying.
+The owner accepts or rejects the exact reported Candidate commit.
 
-<!-- peeraxis-outcome-state:eyJzY2hlbWFWZXJzaW9uIjoxLCJzb3VyY2UiOiIucGVlcmF4aXMvb3V0Y29tZXMvc2xpY2UtMTMtZWRpdG9yIiwiaW50ZW5kZWRPdXRjb21lIjoiU2xpY2UgMTM6IGluIHRoZSBjcmVhdG9yJ3MgZXhpc3Rpbmcgc2NlbmFyaW8gZWRpdG9yLCBtYWtlIGVhY2ggSXNzdWUncyBuYW1lIGFuZCB1bml0IGVkaXRhYmxlLCBsZXQgdGhlIGNyZWF0b3IgYWRkIGFuZCByZW1vdmUgSXNzdWVzLCBhbmQgbGV0IHRoZSBjcmVhdG9yIGVkaXQgZWFjaCBBSSBQZXJzb25hJ3MgbmFtZSwgZGVzY3JpcHRpb24sIGFuZCBpbml0aWFsIGdyZWV0aW5nLiBTYXZlIGFsbCBjaGFuZ2VzIHRocm91Z2ggdGhlIGV4aXN0aW5nIG93bmVyLWF1dGhvcml6ZWQgcm91dGVzIGFuZCBzaG93IFNhdmVkIG9ubHkgYWZ0ZXIgZXZlcnkgU2NlbmFyaW8gYW5kIFBlcnNvbmEgd3JpdGUgc3VjY2VlZHMuIEtlZXAgZXhpc3RpbmcgSXNzdWUgZGlyZWN0aW9uL251bWJlciB2YWxpZGF0aW9uLCBTY2VuYXJpbyBvd25lcnNoaXAgY2hlY2tzLCBhbmQgUGVyc29uYSBvd25lcnNoaXAgY2hlY2tzIGludGFjdC4gVGhlIGxvY2tlZCBicm93c2VyIGFjY2VwdGFuY2UgZGVzY3JpYmVzIHRoZSByZXF1aXJlZCBwcmV2aWV3IGRlbW87IGl0IG11c3QgcGFzcyBvbiBhIGRlcGxveWVkIHByZXZpZXcgYmVmb3JlIG93bmVyIGFjY2VwdGFuY2Ugb3IgbWVyZ2UuIiwic3RhdGUiOiJzdG9wcGVkIiwiZGVtb25zdHJhdGVkIjoiVGhlIHJ1biBzdG9wcGVkIG9uIHRoaXMgb2JzZXJ2ZWQgZmFjdDogYnVpbGRlciBmYWlsZWQgd2l0aCBleGl0IGNvZGUgMTsgYSBwYXRoIG91dHNpZGUgdGhlIGFsbG93ZWQgbGlzdCBvciBsb2NrZWQgYWNjZXB0YW5jZSBldmlkZW5jZSB3YXMgZGVuaWVkLiIsImhhcHBlbmluZ05vdyI6IkV4ZWN1dGlvbiBpcyBzYWZlbHkgc3RvcHBlZCB3aXRoIHRoZSB0cnVzdGVkIGNoZWNrb3V0IHVuY2hhbmdlZC4iLCJvd25lckFjdGlvbiI6bnVsbCwib3duZXJEZWNpc2lvbnMiOltdLCJqb3VybmV5TWlsZXN0b25lcyI6W3sibmFtZSI6IkNhbmRpZGF0ZSIsInN0YXR1cyI6ImRlbW9uc3RyYXRlZCIsInZpc2libGVSZXN1bHQiOiJBbiBpc29sYXRlZCBDYW5kaWRhdGUgcHJlc2VydmVzIHRoZSBhdHRlbXB0ZWQgaW1wcm92ZW1lbnQuIn0seyJuYW1lIjoiTG9ja2VkIHByb29mIiwic3RhdHVzIjoicGVuZGluZyIsInZpc2libGVSZXN1bHQiOiJUaGUgYXBwcm92ZWQgYWNjZXB0YW5jZSBjb21tYW5kIGhhcyBub3QgZGVtb25zdHJhdGVkIHRoZSBPdXRjb21lLiJ9LHsibmFtZSI6IkluZGVwZW5kZW50IHJldmlldyIsInN0YXR1cyI6InBlbmRpbmciLCJ2aXNpYmxlUmVzdWx0IjoiSW5kZXBlbmRlbnQgcmV2aWV3IGhhcyBub3QgYXV0aG9yaXplZCB2ZXJpZmljYXRpb24uIn0seyJuYW1lIjoiT3duZXIgYWNjZXB0YW5jZSIsInN0YXR1cyI6ImJsb2NrZWQiLCJ2aXNpYmxlUmVzdWx0IjoiQWNjZXB0YW5jZSBpcyB1bmF2YWlsYWJsZSB1bnRpbCB0aGUgZmFpbGVkIGdhdGUgaXMgY29ycmVjdGVkLiJ9XSwiZXZpZGVuY2UiOlsiRXhlY3V0aW9uIHN0b3BwZWQgYmVmb3JlIGxvY2tlZCBldmlkZW5jZSBjb21wbGV0ZWQuIl0sInJlY292ZXJ5Ijp7ImZhaWx1cmVDbGFzcyI6ImJ1aWxkIiwic3VtbWFyeSI6ImJ1aWxkZXIgZmFpbGVkIHdpdGggZXhpdCBjb2RlIDE7IGEgcGF0aCBvdXRzaWRlIHRoZSBhbGxvd2VkIGxpc3Qgb3IgbG9ja2VkIGFjY2VwdGFuY2UgZXZpZGVuY2Ugd2FzIGRlbmllZCIsInJldGFpbmVkU3RhdGUiOiJUaGUgaXNvbGF0ZWQgQ2FuZGlkYXRlIGlzIHJldGFpbmVkIGF0IGAvcHJpdmF0ZS92YXIvZm9sZGVycy9qZy9tbmQzMTBzajI5NWRqazFwYmxkeGg3d2gwMDAwZ24vVC9wZWVyYXhpcy1zbGljZXMvMGYzY2VkMDMtNTdmNi00Njc3LTgyOGEtY2E5YWIzNmExMTExYC4iLCJzYWZldHlTdGF0dXMiOiJUaGUgdHJ1c3RlZCBjaGVja291dCBpcyB1bmNoYW5nZWQuIn0sIm5leHRBY3Rpb24iOiJJbnNwZWN0IHRoZSByZXBvcnRlZCBmYWN0IGluIHRoZSBpc29sYXRlZCBDYW5kaWRhdGUsIHRoZW4gY29ycmVjdCBpdCBvciBkZWxpYmVyYXRlbHkgZGlzY2FyZCB0aGUgQ2FuZGlkYXRlIGJlZm9yZSByZXRyeWluZy4iLCJ1cGRhdGVkQXQiOiIyMDI2LTA5LTIyVDAyOjU0OjI3LjAwOTc0MiswMDowMCJ9 -->
+<!-- peeraxis-outcome-state:eyJzY2hlbWFWZXJzaW9uIjoxLCJzb3VyY2UiOiIucGVlcmF4aXMvb3V0Y29tZXMvc2xpY2UtMTMtZWRpdG9yIiwiaW50ZW5kZWRPdXRjb21lIjoiU2xpY2UgMTM6IGluIHRoZSBjcmVhdG9yJ3MgZXhpc3Rpbmcgc2NlbmFyaW8gZWRpdG9yLCBtYWtlIGVhY2ggSXNzdWUncyBuYW1lIGFuZCB1bml0IGVkaXRhYmxlLCBsZXQgdGhlIGNyZWF0b3IgYWRkIGFuZCByZW1vdmUgSXNzdWVzLCBhbmQgbGV0IHRoZSBjcmVhdG9yIGVkaXQgZWFjaCBBSSBQZXJzb25hJ3MgbmFtZSwgZGVzY3JpcHRpb24sIGFuZCBpbml0aWFsIGdyZWV0aW5nLiBTYXZlIGFsbCBjaGFuZ2VzIHRocm91Z2ggdGhlIGV4aXN0aW5nIG93bmVyLWF1dGhvcml6ZWQgcm91dGVzIGFuZCBzaG93IFNhdmVkIG9ubHkgYWZ0ZXIgZXZlcnkgU2NlbmFyaW8gYW5kIFBlcnNvbmEgd3JpdGUgc3VjY2VlZHMuIEtlZXAgZXhpc3RpbmcgSXNzdWUgZGlyZWN0aW9uL251bWJlciB2YWxpZGF0aW9uLCBTY2VuYXJpbyBvd25lcnNoaXAgY2hlY2tzLCBhbmQgUGVyc29uYSBvd25lcnNoaXAgY2hlY2tzIGludGFjdC4gVGhlIGxvY2tlZCBicm93c2VyIGFjY2VwdGFuY2UgZGVzY3JpYmVzIHRoZSByZXF1aXJlZCBwcmV2aWV3IGRlbW87IGl0IG11c3QgcGFzcyBvbiBhIGRlcGxveWVkIHByZXZpZXcgYmVmb3JlIG93bmVyIGFjY2VwdGFuY2Ugb3IgbWVyZ2UuIiwic3RhdGUiOiJ2ZXJpZmllZCIsImRlbW9uc3RyYXRlZCI6IlRoZSBzYXZlZCB2ZXJzaW9uIHBhc3NlZCB0aGUgcmVjb3JkZWQgY2hlY2tzIGFuZCBpbmRlcGVuZGVudCByZXZpZXc7IG93bmVyIGFjY2VwdGFuY2UgaXMgc3RpbGwgcGVuZGluZy4iLCJoYXBwZW5pbmdOb3ciOiJUaGUgdmVyaWZpZWQgdmVyc2lvbiBpcyBzYXZlZCBpbiB0aGlzIHByb2plY3QgYW5kIHdhaXRpbmcgZm9yIHRoZSBvd25lcidzIGRlY2lzaW9uLiIsIm93bmVyQWN0aW9uIjoiUmV2aWV3IHRoZSBkZW1vbnN0cmF0ZWQgcmVzdWx0LCB0aGVuIGFjY2VwdCBvciByZWplY3QgdGhlIGV4YWN0IHJlcG9ydGVkIENhbmRpZGF0ZSBjb21taXQuIiwib3duZXJEZWNpc2lvbnMiOltdLCJqb3VybmV5TWlsZXN0b25lcyI6W3sibmFtZSI6IkNhbmRpZGF0ZSIsInN0YXR1cyI6ImRlbW9uc3RyYXRlZCIsInZpc2libGVSZXN1bHQiOiJUaGUgcHJvamVjdCBwcmVzZXJ2ZXMgdGhlIGF0dGVtcHRlZCBpbXByb3ZlbWVudC4ifSx7Im5hbWUiOiJMb2NrZWQgcHJvb2YiLCJzdGF0dXMiOiJkZW1vbnN0cmF0ZWQiLCJ2aXNpYmxlUmVzdWx0IjoiVGhlIGFwcHJvdmVkIGFjY2VwdGFuY2UgY29tbWFuZCBwYXNzZWQuIn0seyJuYW1lIjoiSW5kZXBlbmRlbnQgcmV2aWV3Iiwic3RhdHVzIjoiZGVtb25zdHJhdGVkIiwidmlzaWJsZVJlc3VsdCI6IkEgZnJlc2ggcmV2aWV3ZXIgcmV0dXJuZWQgYSB2YWxpZCBQYXNzIHdpdGggbm8gdW5yZXNvbHZlZCBibG9ja2VyLiJ9LHsibmFtZSI6Ik93bmVyIGFjY2VwdGFuY2UiLCJzdGF0dXMiOiJwZW5kaW5nIiwidmlzaWJsZVJlc3VsdCI6IlRoZSBleGFjdCB2ZXJpZmllZCBDYW5kaWRhdGUgYXdhaXRzIHRoZSBvd25lcidzIGRlY2lzaW9uLiJ9XSwiZXZpZGVuY2UiOlsiT2JzZXJ2ZWQgY2hhbmdlZCBwYXRoczogc3JjL2FwcC8odXNlcikvc2NlbmFyaW8vW2lkXS9lZGl0L0VkaXRTY2VuYXJpb0NsaWVudC50c3gsIHNyYy9hcHAvKHVzZXIpL3NjZW5hcmlvL1tpZF0vZWRpdC9wYWdlLnRzeCwgc3JjL2FwcC9hcGkvcGVyc29uYXMvW2lkXS9yb3V0ZS50cywgc3JjL2NvbXBvbmVudHMvc2NlbmFyaW9zL0lzc3VlTnVtYmVyc0VkaXRvci50c3guIiwiTG9ja2VkIGNvbW1hbmQgYG5wbSBjaSAtLXByZWZlci1vZmZsaW5lIC0tbm8tYXVkaXQgLS1uby1mdW5kICYmIGV4cG9ydCBEQVRBQkFTRV9VUkw9cG9zdGdyZXNxbDovL2NpOmNpQGxvY2FsaG9zdDo1NDMyL2NpIERBVEFCQVNFX1VSTF9VTlBPT0xFRD1wb3N0Z3Jlc3FsOi8vY2k6Y2lAbG9jYWxob3N0OjU0MzIvY2kgTkVYVF9QVUJMSUNfQ0xFUktfUFVCTElTSEFCTEVfS0VZPXBrX3Rlc3RfWTJrdGNHeGhZMlZvYjJ4a1pYSXVZMnhsY21zdVlXTmpiM1Z1ZEhNdVpHVjJKQSBDTEVSS19TRUNSRVRfS0VZPXNrX3Rlc3RfY2lfcGxhY2Vob2xkZXIgJiYgbnBtIHRlc3QgLS0gLS1ydW5JbkJhbmQgLS1ydW5UZXN0c0J5UGF0aCAnc3JjL2FwcC8odXNlcikvc2NlbmFyaW8vW2lkXS9lZGl0L19fdGVzdHNfXy9FZGl0U2NlbmFyaW9DbGllbnQudGVzdC50c3gnIHNyYy9hcHAvYXBpL19fdGVzdHNfXy9wZXJzb25hcy1jb3JlLWVkaXQudGVzdC50cyBzcmMvYXBwL2FwaS9fX3Rlc3RzX18vcGVyc29uYXMtYXZhdGFyLnRlc3QudHMgc3JjL2FwcC9hcGkvX190ZXN0c19fL3NjZW5hcmlvcy1lZGl0LnRlc3QudHMgJiYgbnBtIHJ1biB0eXBlY2hlY2sgJiYgbnBtIHJ1biBidWlsZGAgZXhpdGVkIDAgd2l0aCBvdXRwdXQgZmluZ2VycHJpbnQgNzEyNDJlNWMzOTBlNDliMzY0N2NhNjA3YjAyNDRiNDkyMzI3MDc3NjJlNGE2MjFlYjY4ZWI2OWRmMmZiYzJhMi4iLCJJbmRlcGVuZGVudCByZXZpZXc6IFRoZSBmb3VyIGNoYW5nZWQgZmlsZXMgaW1wbGVtZW50IFNsaWNlIDEzIGNvcnJlY3RseTogRWRpdFNjZW5hcmlvQ2xpZW50LnRzeCBhZGRzIGVkaXRhYmxlIElzc3VlIG5hbWUvdW5pdCBmaWVsZHMgd2l0aCBhZGQvcmVtb3ZlIGNvbnRyb2xzICh2aWEgSXNzdWVOdW1iZXJzRWRpdG9yJ3MgbmV3IGVkaXRhYmxlSXNzdWVzIG1vZGUpLCBlZGl0YWJsZSBQZXJzb25hIG5hbWUvZGVzY3JpcHRpb24vaW5pdGlhbEdyZWV0aW5nIGZpZWxkcywgYW5kIGEgc2F2ZSBmbG93IHRoYXQgUEFUQ0hlcyB0aGUgc2NlbmFyaW8gZmlyc3QsIHRoZW4gZWFjaCBwZXJzb25hIHNlcXVlbnRpYWxseSwgb25seSBzZXR0aW5nIFwiU2F2ZWQuXCIgYWZ0ZXIgZXZlcnkgd3JpdGUgc3VjY2VlZHMgKGFib3J0aW5nIG9uIHRoZSBmaXJzdCBmYWlsdXJlKS4gVGhlIHBlcnNvbmFzIFBBVENIIHJvdXRlIHJldGFpbnMgaXRzIG93bmVyc2hpcCBjaGVjayAoYWRtaW4gb3Igc2NlbmFyaW8uY3JlYXRlZEJ5SWQpIGFuZCBhZGRzIHN0cmljdCB2YWxpZGF0aW9uIGZvciBuYW1lL2Rlc2NyaXB0aW9uIGxlbmd0aCBiZWZvcmUgd3JpdGluZy4gVGhlIHNjZW5hcmlvIFBBVENIIHJvdXRlICh1bmNoYW5nZWQsIG91dHNpZGUgYWxsb3dlZFBhdGhzKSByZXRhaW5zIGlzc3VlIGRpcmVjdGlvbi9udW1iZXIgdmFsaWRhdGlvbiB2aWEgaXNzdWVXaXRoRGlyZWN0aW9uU2NoZW1hIGFuZCBvd25lcnNoaXAgY2hlY2tzLiBBbGwgZGF0YS10ZXN0aWRzIGluIHRoZSBpbXBsZW1lbnRhdGlvbiBtYXRjaCB0aG9zZSByZWZlcmVuY2VkIGluIHRoZSBsb2NrZWQgUGxheXdyaWdodCBhY2NlcHRhbmNlIHNwZWMgKGlzc3VlLU4tbmFtZS91bml0LCByZW1vdmUtaXNzdWUtTiwgYWRkLWlzc3VlLCBwZXJzb25hLU4tbmFtZS9kZXNjcmlwdGlvbi9ncmVldGluZywgZWRpdC1zYXZlLCBlZGl0LXNhdmVkKSBhbmQgdGhlIGxvY2tlZCBqZXN0IHVuaXQgdGVzdC4gQ2hhbmdlZCBwYXRocyBleGFjdGx5IG1hdGNoIHRoZSBhY2NlcHRhbmNlLmpzb24gYWxsb3dlZFBhdGhzIGxpc3QsIHNvIG5vIHNjb3BlIGNyZWVwLiBObyB3ZWFrZW5pbmcgb2YgZXhpc3RpbmcgdmFsaWRhdGlvbiBvciBvd25lcnNoaXAgY2hlY2tzIHdhcyBmb3VuZC4iLCJDYW5kaWRhdGUgYC9Vc2Vycy9zYWlyYW1ia3Jpc2huYW4vZ2l0L3BlcnN1YWlkZXJgIGlzIHJldGFpbmVkIGF0IGV4YWN0IGNvbW1pdCBgMzM0ZDU5NzUwMDIwMmIwNGRhNTZjMGI5NWM5ZTY5YzUzODIxODNmY2AuIl0sInJlY292ZXJ5IjpudWxsLCJuZXh0QWN0aW9uIjoiVGhlIG93bmVyIGFjY2VwdHMgb3IgcmVqZWN0cyB0aGUgZXhhY3QgcmVwb3J0ZWQgQ2FuZGlkYXRlIGNvbW1pdC4iLCJ1cGRhdGVkQXQiOiIyMDI2LTA5LTIyVDAzOjUxOjI3LjkzODEzMSswMDowMCJ9 -->
