@@ -16,7 +16,7 @@ interface EditableScenario {
   joinCode: string;
   learnerRoleId: string | null;
   roles: Array<{ id: string; name: string; description: string }>;
-  personas: Array<{ id: string; name: string; roleId: string | null }>;
+  personas: Array<{ id: string; name: string; description: string; initialGreeting: string | null; roleId: string | null }>;
   issues: GeneratedIssue[];
 }
 
@@ -27,6 +27,7 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
   const [visibility, setVisibility] = useState<'public' | 'unlisted'>(scenario.visibility);
   const [roles, setRoles] = useState(scenario.roles);
   const [learnerRoleId, setLearnerRoleId] = useState(scenario.learnerRoleId);
+  const [personas, setPersonas] = useState(scenario.personas);
   const [issues, setIssues] = useState(scenario.issues);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
   const playedByPersona = (roleId: string) => scenario.personas.some((p) => p.roleId === roleId);
 
   const save = async () => {
+    if (saving || invalidIssue) return;
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -49,6 +51,18 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
         const data = await res.json().catch(() => ({}));
         setError(data.error || 'Could not save');
         return;
+      }
+      for (const persona of personas) {
+        const personaRes = await fetch(`/api/personas/${persona.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: persona.name, description: persona.description, initialGreeting: persona.initialGreeting }),
+        });
+        if (!personaRes.ok) {
+          const data = await personaRes.json().catch(() => ({}));
+          setError(data.error || `Could not save Persona “${persona.name}”. Some changes may have saved; try Save again.`);
+          return;
+        }
       }
       setSaved(true);
       router.refresh();
@@ -69,6 +83,7 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
         {error && <p role="alert" data-testid="edit-error" className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-700 dark:bg-red-950/40 dark:text-red-200">{error}</p>}
         {saved && <p role="status" data-testid="edit-saved" className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-700 dark:bg-green-950/40 dark:text-green-200">Saved.</p>}
 
+        <fieldset disabled={saving} onChangeCapture={() => setSaved(false)} className="space-y-6">
         <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
           <label className="block">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Title</span>
@@ -108,10 +123,43 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
           </section>
         )}
 
-        {issues.length > 0 && (
           <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-3" data-testid="edit-numbers">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Numbers</h2>
-            <IssueNumbersEditor issues={issues} onChange={setIssues} />
+            <IssueNumbersEditor issues={issues} editableIssues onChange={(next) => { setIssues(next); setSaved(false); }} />
+            <Button type="button" data-testid="add-issue" disabled={issues.length >= 10 || roles.length !== 2} onClick={() => {
+              let number = issues.length + 1;
+              while (issues.some((issue) => issue.name.trim().toLowerCase() === `issue ${number}`)) number++;
+              setIssues([...issues, {
+                name: `Issue ${number}`, unit: '', learnerWants: 'lower',
+                learner: { target: 0, reservation: 100, weight: 100 },
+                counterpart: { target: 100, reservation: 0, weight: 100 },
+              }]);
+              setSaved(false);
+            }}>Add Issue</Button>
+            {roles.length !== 2 && <p className="text-sm text-gray-600 dark:text-gray-400">Issues require exactly two sides.</p>}
+          </section>
+
+        {personas.length > 0 && (
+          <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">AI Personas</h2>
+            {personas.map((persona, idx) => (
+              <div key={persona.id} className="border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-2">
+                {(['name', 'description', 'initialGreeting'] as const).map((field) => {
+                  const props = {
+                    value: persona[field] ?? '',
+                    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setPersonas(personas.map((p) => p.id === persona.id ? { ...p, [field]: e.target.value } : p)),
+                    'data-testid': `persona-${idx}-${field === 'initialGreeting' ? 'greeting' : field}`,
+                    className: 'mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+                  };
+                  return (
+                    <label key={field} className="block text-sm text-gray-700 dark:text-gray-300">
+                      {field === 'name' ? 'Name' : field === 'description' ? 'Description' : 'Initial greeting'}
+                      {field === 'name' ? <input {...props} maxLength={100} /> : <textarea {...props} rows={3} maxLength={field === 'description' ? 5000 : undefined} />}
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
           </section>
         )}
 
@@ -119,6 +167,7 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
           <Button onClick={save} disabled={saving || !!invalidIssue} data-testid="edit-save">{saving ? 'Saving…' : 'Save'}</Button>
           {invalidIssue && <span className="text-sm text-amber-700 dark:text-amber-300">Fix the numbers on “{invalidIssue.name}” first.</span>}
         </div>
+        </fieldset>
       </main>
     </div>
   );

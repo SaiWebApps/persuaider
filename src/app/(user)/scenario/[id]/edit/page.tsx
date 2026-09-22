@@ -13,7 +13,7 @@ export default async function EditScenarioPage({ params }: { params: Promise<{ i
 
   const scenario = await prisma.scenario.findUnique({
     where: { id },
-    include: { roles: { orderBy: { displayOrder: 'asc' } }, personas: { select: { id: true, name: true, roleId: true } } },
+    include: { roles: { orderBy: { displayOrder: 'asc' } }, personas: { select: { id: true, name: true, description: true, initialGreeting: true, roleId: true } } },
   });
   if (!scenario || (scenario.createdById !== session.user.id && session.user.role !== 'admin')) {
     redirect('/dashboard?notice=not-your-scenario');

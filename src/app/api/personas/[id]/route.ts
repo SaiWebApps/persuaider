@@ -63,7 +63,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/personas/[id] - Update persona characteristics, avatar, role
+// PATCH /api/personas/[id] - Update persona copy, characteristics, avatar, role
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -99,6 +99,16 @@ export async function PATCH(
 
     const body = await request.json();
     const updates: Record<string, unknown> = {};
+
+    // Validate editable Persona copy before writing any updates.
+    for (const [field, limit] of [['name', 100], ['description', 5000]] as const) {
+      if (body[field] !== undefined) {
+        if (typeof body[field] !== 'string' || !body[field].trim() || body[field].length > limit) {
+          return NextResponse.json({ error: `${field} must be 1–${limit} characters` }, { status: 400 });
+        }
+        updates[field] = body[field].trim();
+      }
+    }
 
     // Validate characteristics
     if (body.characteristics !== undefined) {

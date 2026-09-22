@@ -23,10 +23,12 @@ export function IssueNumbersEditor({
   issues,
   onChange,
   idPrefix = 'issue',
+  editableIssues = false,
 }: {
   issues: GeneratedIssue[];
   onChange: (issues: GeneratedIssue[]) => void;
   idPrefix?: string;
+  editableIssues?: boolean;
 }) {
   const setNumber = (idx: number, side: 'learner' | 'counterpart', key: 'target' | 'reservation', value: string) => {
     const n = Number(value);
@@ -53,8 +55,25 @@ export function IssueNumbersEditor({
         return (
           <div key={idx} className="p-2 border border-gray-200 dark:border-gray-600 rounded text-sm" data-testid={`${idPrefix}-${idx}`}>
             <div className="font-medium text-gray-900 dark:text-gray-100">
-              {issue.name}
-              {issue.unit ? <span className="text-gray-500 dark:text-gray-400 ml-1">({issue.unit})</span> : null}
+              {editableIssues ? (
+                <div className="flex flex-wrap items-end gap-3">
+                  {(['name', 'unit'] as const).map((key) => (
+                    <label key={key} className="flex flex-col text-xs">
+                      {key === 'name' ? 'Issue name' : 'Unit'}
+                      <input
+                        value={issue[key] ?? ''}
+                        maxLength={key === 'name' ? 100 : 20}
+                        onChange={(e) => onChange(issues.map((it, i) => i === idx ? { ...it, [key]: e.target.value } : it))}
+                        data-testid={`${idPrefix}-${idx}-${key}`}
+                        className="mt-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                    </label>
+                  ))}
+                  <button type="button" onClick={() => onChange(issues.filter((_, i) => i !== idx))} data-testid={`remove-${idPrefix}-${idx}`} className="text-sm text-red-700 dark:text-red-300">
+                    Remove Issue
+                  </button>
+                </div>
+              ) : <>{issue.name}{issue.unit ? <span className="text-gray-500 dark:text-gray-400 ml-1">({issue.unit})</span> : null}</>}
               <span className="text-gray-500 dark:text-gray-400 ml-2 text-xs">you want it {issue.learnerWants}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-3">
