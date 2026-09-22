@@ -69,6 +69,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         for (const r of body.roles) {
           const existing = editableRoles.find((x) => x.id === r?.id);
           if (!existing) throw new ValidationError('roles: unknown role id', 'roles');
+          if (roleUpdates.some((u) => u.id === existing.id)) throw new ValidationError('roles: duplicate role id', 'roles');
           if (typeof r.name !== 'string' || !r.name.trim() || r.name.length > 100) throw new ValidationError('roles: name must be 1–100 characters', 'roles');
           if (typeof r.description !== 'string' || r.description.length > 5000) throw new ValidationError('roles: description must be at most 5000 characters', 'roles');
           roleUpdates.push({ id: existing.id, name: r.name.trim(), description: r.description });

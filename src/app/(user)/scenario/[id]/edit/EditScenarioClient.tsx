@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CopyShareLink } from '@/components/scenarios/CopyShareLink';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,6 +40,7 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
     scenario.learnerRoleId ?? (scenario.roles.length === 0 ? defaultRoles[0]?.id ?? null : null),
   );
   const [personas, setPersonas] = useState(scenario.personas);
+  const savedPersonas = useRef(scenario.personas);
   const [issues, setIssues] = useState(scenario.issues);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,16 +66,25 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
         return;
       }
       for (const persona of personas) {
+        const previous = savedPersonas.current.find((p) => p.id === persona.id);
+        const changes = Object.fromEntries(
+          (['name', 'description', 'initialGreeting'] as const)
+            .filter((field) => persona[field] !== previous?.[field])
+            .map((field) => [field, persona[field]]),
+        );
+        // An Issue-only save must preserve legacy Persona copy byte-for-byte.
+        if (Object.keys(changes).length === 0) continue;
         const personaRes = await fetch(`/api/personas/${persona.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: persona.name, description: persona.description, initialGreeting: persona.initialGreeting }),
+          body: JSON.stringify(changes),
         });
         if (!personaRes.ok) {
           const data = await personaRes.json().catch(() => ({}));
           setError(data.error || `Could not save Persona “${persona.name}”. Some changes may have saved; try Save again.`);
           return;
         }
+        savedPersonas.current = savedPersonas.current.map((p) => p.id === persona.id ? { ...persona } : p);
       }
       setSaved(true);
       router.refresh();
