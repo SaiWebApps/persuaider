@@ -1,5 +1,20 @@
 # Slice 13 — real execution checkpoint
 
+## Owner accepted — 2026-09-22
+
+The owner tested the demonstrated editor and stated: "I tried everything. It all
+works." This accepts the combined Issue add/remove/edit and Persona editing
+outcome, including save/reload and the legacy Add Issue repair, on preview
+`dpl_6RMSAHNKnzy6Q9u5PKEJBNHdZqQu`, implementation commit
+`595b5e7e1b2eb21eabf8ebdafbecb2fb254e4e2e`.
+
+This records the actual owner decision, not inferred approval from tests. It does
+not authorize production deployment, upstream push, or a new outcome. Subsequent
+commit `93a9a18` contains only progress/report/browser evidence, not product edits.
+The runner's historical report still records Verified/pending acceptance; this
+dated owner decision is recorded separately rather than rewriting its generated
+evidence or pretending the owner accepted a different implementation version.
+
 ## Current owner-feedback repair (supersedes the older preview below)
 
 Current preview: https://persuaider-8rexl8zzj-sairam-krishnan-s-projects.vercel.app
@@ -29,10 +44,11 @@ Cleanup: deleted only the two browser-created scenarios after exact id/title che
 `cmuc6ha1b0001lb04qxrkhsu9` and `cmuc6hedd0009lb041zbap8kj`, including dependent
 fixture records. This deletion is not recoverable through the app; the tests can
 recreate their fixtures. Owner scenario `cmuc5qkl20001l204cvsn7oub` was not changed.
-The prior preview is retained only because the owner's existing signed-in tab uses
-it; remove `dpl_FZzV5R8r7gfpwJTFuSQWDH8nLNvk` after the owner moves to this preview.
-The new address currently requires sign-in in the in-app browser. No branches,
-worktrees, production deployment, upstream push or acceptance were created.
+After the owner moved to the new preview and accepted it, the superseded preview
+`dpl_FZzV5R8r7gfpwJTFuSQWDH8nLNvk` was removed on 2026-09-22. Its old URL no
+longer serves the app; its source remains in Git and can be redeployed. The accepted
+preview is retained. No branches, worktrees, production deployment or upstream
+push were created.
 
 ## Earlier initial implementation and demonstration
 
