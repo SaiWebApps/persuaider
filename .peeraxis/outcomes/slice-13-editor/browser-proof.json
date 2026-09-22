@@ -35,7 +35,7 @@
         "testDir": "/Users/sairambkrishnan/git/persuaider/e2e/playwright/acceptance",
         "testIgnore": [],
         "testMatch": [
-          "slice-13.spec.ts"
+          "slice-13*.spec.ts"
         ],
         "timeout": 30000
       }
@@ -49,7 +49,7 @@
       [
         "json",
         {
-          "outputFile": "test-results/slice-13-preview.json"
+          "outputFile": "../.peeraxis/outcomes/slice-13-editor/browser-proof.json"
         }
       ]
     ],
@@ -66,6 +66,69 @@
     "webServer": null
   },
   "suites": [
+    {
+      "title": "slice-13-legacy.spec.ts",
+      "file": "slice-13-legacy.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "an existing scenario without saved sides can add and retain an Issue",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7331,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "steps": [
+                    {
+                      "title": "Open an older scenario; Add Issue works without hidden setup.",
+                      "duration": 907
+                    },
+                    {
+                      "title": "Reload, edit the Issue again, save and reload; both saves persist.",
+                      "duration": 1155
+                    }
+                  ],
+                  "startTime": "2026-09-22T04:32:33.527Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "demo-scenario",
+                      "contentType": "application/json",
+                      "body": "eyJpZCI6ImNtdWM2aGExYjAwMDFsYjA0cXhya2hzdTkiLCJ0aXRsZSI6IkUyRSBMZWdhY3kgSXNzdWVzIDE3OTAwNTE1NTc1MDIifQ=="
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/sairambkrishnan/git/persuaider/test-results/slice-13-legacy-an-existin-8f382-can-add-and-retain-an-Issue/test-finished-1.png"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "993a6bd36da209a17c08-ee2ec1fb21d93c00623d",
+          "file": "slice-13-legacy.spec.ts",
+          "line": 5,
+          "column": 5
+        }
+      ]
+    },
     {
       "title": "slice-13.spec.ts",
       "file": "slice-13.spec.ts",
@@ -88,7 +151,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 17277,
+                  "duration": 6062,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
@@ -96,32 +159,32 @@
                   "steps": [
                     {
                       "title": "Open your scenario editor; the current Issue and AI Persona are editable.",
-                      "duration": 634
+                      "duration": 325
                     },
                     {
                       "title": "Add Delivery date, remove Monthly rent, edit the AI Persona, and Save; “Saved.” appears.",
-                      "duration": 953
+                      "duration": 907
                     },
                     {
                       "title": "Reload the editor; Delivery date remains, Monthly rent is gone, and the edited Persona remains.",
-                      "duration": 346
+                      "duration": 320
                     },
                     {
                       "title": "Invalid numbers prevent saving; correcting them restores Save.",
-                      "duration": 12
+                      "duration": 179
                     },
                     {
                       "title": "An empty Persona name shows an error, not Saved; correcting it succeeds.",
-                      "duration": 1667
+                      "duration": 1171
                     }
                   ],
-                  "startTime": "2026-09-22T04:03:10.243Z",
+                  "startTime": "2026-09-22T04:32:40.947Z",
                   "annotations": [],
                   "attachments": [
                     {
                       "name": "demo-scenario",
                       "contentType": "application/json",
-                      "body": "eyJpZCI6ImNtdWM1Zm85ODAwMDFsMzA0cHYwbGVpOHgiLCJ0aXRsZSI6IkUyRSBFZGl0YWJsZSBJc3N1ZXMgYW5kIFBlcnNvbmEgMTc5MDA0OTgwMjgzNCIsInVybCI6Imh0dHBzOi8vcGVyc3VhaWRlci1mdG03ZXFoeGctc2FpcmFtLWtyaXNobmFuLXMtcHJvamVjdHMudmVyY2VsLmFwcC9zY2VuYXJpby9jbXVjNWZvOTgwMDAxbDMwNHB2MGxlaTh4L2VkaXQifQ=="
+                      "body": "eyJpZCI6ImNtdWM2aGVkZDAwMDlsYjA0MXpiYXA4a2oiLCJ0aXRsZSI6IkUyRSBFZGl0YWJsZSBJc3N1ZXMgYW5kIFBlcnNvbmEgMTc5MDA1MTU2MzQ4MiIsInVybCI6Imh0dHBzOi8vcGVyc3VhaWRlci04cmV4bDh6emotc2FpcmFtLWtyaXNobmFuLXMtcHJvamVjdHMudmVyY2VsLmFwcC9zY2VuYXJpby9jbXVjNmhlZGQwMDA5bGIwNDF6YmFwOGtqL2VkaXQifQ=="
                     },
                     {
                       "name": "issues-desktop",
@@ -164,9 +227,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-22T04:03:09.435Z",
-    "duration": 18219.408,
-    "expected": 1,
+    "startTime": "2026-09-22T04:32:32.777Z",
+    "duration": 14273.967999999999,
+    "expected": 2,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

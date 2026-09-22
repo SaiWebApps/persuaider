@@ -1,5 +1,41 @@
 # Slice 13 — real execution checkpoint
 
+## Current owner-feedback repair (supersedes the older preview below)
+
+Current preview: https://persuaider-8rexl8zzj-sairam-krishnan-s-projects.vercel.app
+Deployment: `dpl_6RMSAHNKnzy6Q9u5PKEJBNHdZqQu`.
+Reviewed implementation: `595b5e7e1b2eb21eabf8ebdafbecb2fb254e4e2e`.
+
+Owner's Salary Negotiation scenario had named Employee / Evil Boss sides but no
+saved Role rows. This disabled Add Issue; the initial fixture missed that state.
+Peeraxis's real builder repaired the editor and atomic explicit-Save path. Locked
+checks, typecheck/build, and real Claude review passed. Three real-Postgres suites
+passed (12 tests), including concurrent saves, rollback and ownership.
+
+Both deployed browser journeys passed: the legacy named-side scenario can add an
+Issue, save, reload, rename, save again and retain its Personas; the original
+Issue removal / Persona editing and negative-input checks also still pass.
+`browser-proof.json` contains the new results. The legacy screenshot was inspected.
+This is automated browser proof on task-owned scenarios, not an owner acceptance
+or a claim that we saved changes to the owner's actual scenario.
+
+Peeraxis also needed repairs: Claude failure diagnostics were swallowed, and a
+tracked report's Git status was misread, causing an unwanted builder retry. That
+retry was stopped, its useful in-scope edits retained, and explicit verification
+completed without another builder invocation. The earlier Claude failure did not
+recur; its original cause is unknown.
+
+Cleanup: deleted only the two browser-created scenarios after exact id/title checks:
+`cmuc6ha1b0001lb04qxrkhsu9` and `cmuc6hedd0009lb041zbap8kj`, including dependent
+fixture records. This deletion is not recoverable through the app; the tests can
+recreate their fixtures. Owner scenario `cmuc5qkl20001l204cvsn7oub` was not changed.
+The prior preview is retained only because the owner's existing signed-in tab uses
+it; remove `dpl_FZzV5R8r7gfpwJTFuSQWDH8nLNvk` after the owner moves to this preview.
+The new address currently requires sign-in in the in-app browser. No branches,
+worktrees, production deployment, upstream push or acceptance were created.
+
+## Earlier initial implementation and demonstration
+
 Peeraxis ran the installed Codex builder in this existing folder on local main,
 then the locked local checks and a real Claude read-only review. The run exited 0.
 The four implementation files are saved at 334d597500202b04da56c0b95c9e69c5382183fc.
