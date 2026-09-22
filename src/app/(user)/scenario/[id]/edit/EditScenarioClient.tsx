@@ -14,6 +14,8 @@ interface EditableScenario {
   description: string;
   visibility: 'public' | 'unlisted';
   joinCode: string;
+  userRole?: string;
+  aiRole?: string;
   learnerRoleId: string | null;
   roles: Array<{ id: string; name: string; description: string }>;
   personas: Array<{ id: string; name: string; description: string; initialGreeting: string | null; roleId: string | null }>;
@@ -25,8 +27,18 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
   const [title, setTitle] = useState(scenario.title);
   const [description, setDescription] = useState(scenario.description);
   const [visibility, setVisibility] = useState<'public' | 'unlisted'>(scenario.visibility);
-  const [roles, setRoles] = useState(scenario.roles);
-  const [learnerRoleId, setLearnerRoleId] = useState(scenario.learnerRoleId);
+  // Draft IDs are scoped to this scenario and remain stable through Save/reload.
+  // Reading an older scenario must never create database rows.
+  const defaultRoles = scenario.roles.length === 0 && scenario.userRole && scenario.aiRole
+    ? [
+        { id: `${scenario.id}:legacy-user`, name: scenario.userRole, description: '' },
+        { id: `${scenario.id}:legacy-ai`, name: scenario.aiRole, description: '' },
+      ]
+    : scenario.roles;
+  const [roles, setRoles] = useState(defaultRoles);
+  const [learnerRoleId, setLearnerRoleId] = useState(
+    scenario.learnerRoleId ?? (scenario.roles.length === 0 ? defaultRoles[0]?.id ?? null : null),
+  );
   const [personas, setPersonas] = useState(scenario.personas);
   const [issues, setIssues] = useState(scenario.issues);
   const [saving, setSaving] = useState(false);

@@ -27,6 +27,8 @@ export default async function EditScenarioPage({ params }: { params: Promise<{ i
         description: scenario.description,
         visibility: scenario.visibility === 'public' ? 'public' : 'unlisted',
         joinCode: scenario.joinCode,
+        userRole: scenario.userRole,
+        aiRole: scenario.aiRole,
         learnerRoleId: scenario.learnerRoleId,
         roles: scenario.roles.map((r) => ({ id: r.id, name: r.name, description: r.description })),
         personas: scenario.personas,
