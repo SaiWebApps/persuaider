@@ -53,6 +53,21 @@ describe('EditScenarioClient Slice 13 acceptance', () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
   });
 
+  it('lets an author add an Issue to a legacy scenario with named sides but no Role rows', async () => {
+    const legacy = { ...scenario, userRole: 'Employee', aiRole: 'Evil Boss',
+      roles: [], learnerRoleId: null, issues: [],
+      personas: scenario.personas.map(p => ({ ...p, roleId: null })) };
+    render(<EditScenarioClient scenario={legacy} />);
+    expect(screen.getByTestId('add-issue')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('add-issue'));
+    expect(screen.getByTestId('issue-0-name')).toBeVisible();
+    fireEvent.change(screen.getByTestId('issue-0-name'), { target: { value: 'Salary' } });
+    fireEvent.click(screen.getByTestId('edit-save'));
+    await waitFor(() => expect(screen.getByTestId('edit-saved')).toBeInTheDocument());
+    const call = mockFetch.mock.calls.find(([url]) => url === '/api/scenarios/scenario-1');
+    expect(JSON.parse(call![1].body).issues[0].name).toBe('Salary');
+  });
+
   it('adds and removes Issues, edits the Persona, and persists both payloads', async () => {
     render(<EditScenarioClient scenario={scenario} />);
 

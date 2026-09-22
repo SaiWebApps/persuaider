@@ -1,18 +1,21 @@
 {
   "schemaVersion": 1,
-  "task": "Slice 13: in the creator's existing scenario editor, make each Issue's name and unit editable, let the creator add and remove Issues, and let the creator edit each AI Persona's name, description, and initial greeting. Save all changes through the existing owner-authorized routes and show Saved only after every Scenario and Persona write succeeds. Keep existing Issue direction/number validation, Scenario ownership checks, and Persona ownership checks intact. The locked browser acceptance describes the required preview demo; it must pass on a deployed preview before owner acceptance or merge.",
+  "task": "Slice 13: in the creator's existing scenario editor, make each Issue's name and unit editable, let the creator add and remove Issues, and let the creator edit each AI Persona's name, description, and initial greeting. Save all changes through the existing owner-authorized routes and show Saved only after every Scenario and Persona write succeeds. Keep existing Issue direction/number validation, Scenario ownership checks, and Persona ownership checks intact. The locked browser acceptance describes the required preview demo; it must pass on a deployed preview before owner acceptance or merge. OWNER FEEDBACK REPAIR: Add Issue is disabled for an existing scenario with userRole='Employee', aiRole='Evil Boss', zero Role rows, two Personas with null roleId. Reproduce and repair that normal legacy path. Show editable default sides based on the existing named userRole/aiRole when Role rows are absent; Add Issue must work without hidden setup. Persist the new sides and Issue atomically on an explicit authorized Save, not on GET. Preserve Persona identity/copy/links; do not guess ambiguous Persona assignments or rewrite the owner's data globally. Do not merely remove the UI guard while API still rejects save. Keep multi-side validation, ownership checks and existing two-side editing intact. Handle repeated save/reload without duplicate roles, including transaction/concurrency appropriately. Add a focused real-Postgres regression in the allowed new test file for legacy save, second save, and unauthorized access. No branches, worktrees, push, production release or bulk migrations; coordinator handles preview. Never edit locked tests. Browser proof must also pass before owner acceptance.",
   "lockedTests": {
     "e2e/playwright/acceptance/slice-13.spec.ts": "66b406ccc5af1b3ff1219eabd1d7b3ccd962621a63525dbca39f7f5d202fe9b6",
-    "src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx": "4eeffae5c863455be9e627a6192f24e6d2cbe83eb5cc4c18ce9681d3e975f59c",
+    "src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx": "88e92f8d7f557d4fb3df3bbbed1eba34c2334cf4703b652c9228aed70438a076",
     "src/app/api/__tests__/personas-core-edit.test.ts": "9aeaed20a3f8ba5e830bccb4f4fd212181ae37e5746b88b5a1a91d79bfdffaae",
     "src/app/api/__tests__/personas-avatar.test.ts": "466f053d22367704555b35b921e1b15d1c78313c48604c144001d96547bb5b88",
-    "src/app/api/__tests__/scenarios-edit.test.ts": "1ca76d6bcb94034d4ae2a36413a53b884844fbccfcd5efe5d66d88827bafd14f"
+    "src/app/api/__tests__/scenarios-edit.test.ts": "1ca76d6bcb94034d4ae2a36413a53b884844fbccfcd5efe5d66d88827bafd14f",
+    "e2e/playwright/acceptance/slice-13-legacy.spec.ts": "8a365233948fbfc3bdb0a09bd750c81f7fd70a01b829564eb61a14699de59a22"
   },
   "acceptanceCommand": "npm ci --prefer-offline --no-audit --no-fund && export DATABASE_URL=postgresql://ci:ci@localhost:5432/ci DATABASE_URL_UNPOOLED=postgresql://ci:ci@localhost:5432/ci NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2ktcGxhY2Vob2xkZXIuY2xlcmsuYWNjb3VudHMuZGV2JA CLERK_SECRET_KEY=sk_test_ci_placeholder && npm test -- --runInBand --runTestsByPath 'src/app/(user)/scenario/[id]/edit/__tests__/EditScenarioClient.test.tsx' src/app/api/__tests__/personas-core-edit.test.ts src/app/api/__tests__/personas-avatar.test.ts src/app/api/__tests__/scenarios-edit.test.ts && npm run typecheck && npm run build",
   "allowedPaths": [
     "src/app/(user)/scenario/[id]/edit/EditScenarioClient.tsx",
     "src/app/(user)/scenario/[id]/edit/page.tsx",
     "src/app/api/personas/[id]/route.ts",
-    "src/components/scenarios/IssueNumbersEditor.tsx"
+    "src/components/scenarios/IssueNumbersEditor.tsx",
+    "src/app/api/scenarios/[id]/route.ts",
+    "src/app/api/__tests__/scenarios-legacy-issues.integration.test.ts"
   ]
 }

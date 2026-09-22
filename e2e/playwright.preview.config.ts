@@ -9,7 +9,7 @@ if (!baseURL || !baseURL.startsWith('https://')) {
 
 export default defineConfig({
   testDir: './playwright/acceptance',
-  testMatch: 'slice-13.spec.ts',
+  testMatch: 'slice-13*.spec.ts',
   globalSetup: './playwright/preview-setup.ts',
   retries: 0,
   workers: 1,
