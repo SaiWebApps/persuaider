@@ -11,41 +11,55 @@ click through in a browser, and every report to them is a URL plus numbered clic
 
 A slice is one user-visible behavior. Before writing code, write its acceptance test as a
 numbered list of steps a person can click through in under two minutes, each ending in
-something they can see. Put it at the top of the slice's PR description. Example:
+something they can see. The owner approves these steps; they become the Outcome's locked
+Demonstration (see "Delivery through Peeraxis"). Example:
 
-1. Open the preview URL, sign up with a new email. You land on the dashboard.
+1. Open the app, sign up with a new email. You land on the dashboard.
 2. Click "Salary Negotiation", then "Alex Chen". A chat opens with a greeting.
 3. Send "I want 20% more". A reply arrives that pushes back and names a number.
 
-A slice is done when every step passes on the preview deployment, the Playwright test for
-those steps passes, and `npm run build` plus `npm test` pass. Nothing else counts.
+A slice is done when Peeraxis's run of the locked Demonstration passes every step and
+`scripts/peeraxis/check.sh` passes. Nothing else counts.
 
 ## What stops spinning
 
 - No work starts without a written acceptance test. No acceptance test, no code.
 - Anything discovered mid-slice that is not needed to pass the acceptance test goes in one
-  line under "Noticed, not done" in the PR. It is not fixed, investigated, or expanded.
+  line under "Noticed, not done" in your final message. It is not fixed, investigated, or
+  expanded.
 - A slice touches only the files it listed. Refactors outside that list are a separate slice.
-- If a slice cannot pass its acceptance test after two genuine attempts, stop and report
-  what failed with the exact output. Do not try a third approach silently.
+- Peeraxis gives an Outcome at most two attempts and stops it after that. If you cannot make
+  the acceptance pass, stop and report what failed with the exact output. Do not try a third
+  approach silently.
 - No tests that only assert a mock was called. No test-count reporting as progress.
 - No timeline estimates, ever. Sequence only.
 - No re-auditing the codebase. The state is recorded; trust it unless a test disagrees.
 
-## How to report
+## Delivery through Peeraxis
 
-Every report to the owner is at most eight lines, in this shape:
+Work is delivered through Peeraxis Outcomes, not pull requests. Do not write PR bodies, open,
+review or merge PRs, deploy, use the Vercel preview, or post anything on GitHub.
 
-```
-Slice: <name>
-Preview: <url>
-Try: <the numbered steps, or "same as PR">
-Result: passed | failed at step N: <what you would see>
-Noticed, not done: <zero or more one-liners>
-Next slice: <name>
-```
-
-Plain words. No file paths, no code, no options, no "considerations".
+- Each Outcome's approved steps are locked as one Playwright test in
+  `e2e/playwright/acceptance/`: its top-level `test.step` titles are the steps verbatim, each
+  step contains at least one assertion of what it says, and it runs with zero retries. The
+  locked spec and `.peeraxis/outcomes/<name>/acceptance.json` are read-only for you. Change only
+  the Outcome's allowed paths.
+- Peeraxis runs the Demonstration itself, locally: `scripts/peeraxis/demo.sh` builds the app
+  for production and runs the spec against a throwaway database and the Clerk development
+  instance. It must fail before you build and pass every step on your commit. You may run it
+  (`PEERAXIS_DEMO_SPEC=<spec> PEERAXIS_DEMO_OUTPUT=<empty folder> sh scripts/peeraxis/demo.sh`);
+  only Peeraxis's run counts.
+- `scripts/peeraxis/check.sh` is the full gate: migrations from scratch, typecheck, lint, unit
+  and real-Postgres integration tests, build. Run it before you finish.
+- Assertions about LLM replies are structural (a reply arrived, it contains a figure), never
+  semantic.
+- Peeraxis runs the independent reviewers and the two-attempt stop. A parked item ("Noticed,
+  not done") with reviewer severity high becomes the next slice. The owner is never asked to
+  park anything.
+- Spend is capped in the app: per-user daily budget plus a global daily cap. No gate depends
+  on the owner touching a provider console.
+- Your final message is plain words: what changed, then "Noticed, not done" one-liners.
 
 ## Style
 
@@ -57,8 +71,8 @@ answer.
 
 Three layers, and a slice is not done until all pass:
 
-1. Playwright (functional): one test per slice, the acceptance steps verbatim, run against
-   the preview deployment. Selenium is removed; do not add it back.
+1. Playwright (functional): one test per slice, the acceptance steps verbatim, run locally by
+   Peeraxis against a production build. Selenium is removed; do not add it back.
 2. Integration: real Postgres (Neon branch in CI, Docker locally), real routes, real Prisma.
    Every API route a slice touches gets one for authorization and data shape. Engine tests run
    whole trees against recorded LLM fixtures.
@@ -68,7 +82,7 @@ The LLM is never called live in a gate; use recorded fixtures. A nightly live sm
 spend cap catches provider drift. Existing mock-heavy tests are pruned area by area as each
 is touched, never in one sweep.
 
-Gate order per slice: typecheck, build, unit, integration, Playwright on preview.
+Gate order per slice: typecheck, build, unit, integration, the locked Demonstration.
 
 ## More rules (2026-09-19)
 
@@ -81,30 +95,10 @@ Gate order per slice: typecheck, build, unit, integration, Playwright on preview
 - No engine work until ten strangers have completed a practice session on the preview and
   five say the opponent felt real.
 
-## Demo gate (2026-09-20, owner's rule): the steps are the test
+## Review (2026-09-20, owner's rule)
 
-- The PR body's numbered acceptance steps are generated from the slice's acceptance spec
-  (`e2e/playwright/acceptance/slice-NN.spec.ts`). Each step is a `test.step` whose title is the
-  step text and which contains at least one assertion. `scripts/check-acceptance.mjs` fails CI
-  if a step in the PR body is missing from the spec, reworded, or has no assertion, and after
-  the run fails CI if the Playwright report does not show every step passed.
-- Acceptance specs run with zero retries. Assertions about LLM replies are structural (a reply
-  arrived, it contains a figure), never semantic.
-- The acceptance spec also runs against the PR's Vercel preview URL; that status is required.
-- `main` is protected: required checks, no admin bypass. Nobody merges red, including me.
-- A parked item ("Noticed, not done") with reviewer severity high blocks the merge and becomes
-  the next slice. The owner is never asked to park anything.
-- Each reviewer agent posts its full report as its own PR comment under a fixed heading; a
-  status check requires both. The owner never reads them.
-- A PR with more than six CI runs and no green is labelled `blocked`; work stops and the
-  eight-line report says so.
-- Spend is capped in the app: per-user daily budget plus a global daily cap. No gate depends
-  on the owner touching a provider console.
-
-## Review gate (2026-09-20, owner's rule)
-
-No slice merges until two independent adversarial reviewers (separate agents that did not
-write the code) have each read the full diff, run the tests, and reported:
+Peeraxis lands nothing until independent adversarial reviewers (separate agents that did not
+write the code) have read the full diff, run the tests, and reported:
 
 1. Process reviewer: are the working rules obeyed? Acceptance steps present and verbatim in
    a Playwright test; structural work paired with a visible fix; no timelines; no mock-only
@@ -115,5 +109,4 @@ write the code) have each read the full diff, run the tests, and reported:
    continuation) in the accepted order, without drift, gold-plating, or quietly skipped items?
 
 Every finding is either fixed in the slice or listed under "Noticed, not done" with the
-reviewer's severity. Both verdicts are quoted in the PR body. "Passed" without both reports
-is not accepted.
+reviewer's severity.
