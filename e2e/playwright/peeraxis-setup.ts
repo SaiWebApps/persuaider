@@ -14,8 +14,10 @@ export default async function peeraxisSetup() {
   // Browser testing token for the Clerk development instance.
   await clerkSetup({ dotenv: false }); // never read .env.local (LLM keys, Neon URLs)
 
-  // Seed the fresh database (repo seed: plain Prisma upserts, no network).
-  execSync('npx tsx prisma/seed.ts', { stdio: 'inherit' });
+  // Seed the fresh database (repo seed: plain Prisma upserts, no network). `node --import tsx`,
+  // not the tsx CLI: the CLI opens an IPC socket under $TMPDIR, and Peeraxis's stage TMPDIR is
+  // too long for a unix socket path.
+  execSync('node --import tsx prisma/seed.ts', { stdio: 'inherit' });
 
   // Link the seeded rows to the existing Clerk test users (read-only on Clerk).
   const { createClerkClient } = await import('@clerk/backend');

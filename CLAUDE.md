@@ -45,13 +45,16 @@ review or merge PRs, deploy, use the Vercel preview, or post anything on GitHub.
   step contains at least one assertion of what it says, and it runs with zero retries. The
   locked spec and `.peeraxis/outcomes/<name>/acceptance.json` are read-only for you. Change only
   the Outcome's allowed paths.
-- Peeraxis runs the Demonstration itself, locally: `scripts/peeraxis/demo.sh` builds the app
-  for production and runs the spec against a throwaway database and the Clerk development
-  instance. It must fail before you build and pass every step on your commit. You may run it
-  (`PEERAXIS_DEMO_SPEC=<spec> PEERAXIS_DEMO_OUTPUT=<empty folder> sh scripts/peeraxis/demo.sh`);
-  only Peeraxis's run counts.
-- `scripts/peeraxis/check.sh` is the full gate: migrations from scratch, typecheck, lint, unit
-  and real-Postgres integration tests, build. Run it before you finish.
+- Checks you run yourself, inside your sandbox, before you finish: `npx tsc --noEmit`,
+  `npm run lint`, and `npx jest --ci <paths you touched>`. In your sandbox the real-Postgres
+  integration suites report as skipped (there is no database); that is expected, not a pass.
+- Do not run `scripts/peeraxis/check.sh` or `scripts/peeraxis/demo.sh`: your sandbox cannot
+  start their throwaway Postgres (it fails at "postgres up"). Peeraxis runs both itself,
+  outside your sandbox, on your commit. `check.sh` is the full gate: migrations from scratch,
+  schema drift, typecheck, lint, unit and real-Postgres integration tests, build. `demo.sh`
+  builds the app for production and runs the locked spec against a throwaway database and
+  the Clerk development instance; it must fail before you build and pass every step on your
+  commit. Only Peeraxis's runs count.
 - Assertions about LLM replies are structural (a reply arrived, it contains a figure), never
   semantic.
 - Peeraxis runs the independent reviewers and the two-attempt stop. A parked item ("Noticed,
