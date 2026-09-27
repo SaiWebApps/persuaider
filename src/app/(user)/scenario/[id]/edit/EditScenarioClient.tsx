@@ -46,7 +46,9 @@ export function EditScenarioClient({ scenario }: { scenario: EditableScenario })
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const invalidIssue = issues.find((i) => !issueZone(i).ok);
+  // Only numbers the API rejects block Save. Walk-aways that leave no room for a
+  // deal are a warning on the Issue itself; the author may save them.
+  const invalidIssue = issues.find((i) => issueZone(i).severity === 'error');
   const playedByPersona = (roleId: string) => scenario.personas.some((p) => p.roleId === roleId);
 
   const save = async () => {

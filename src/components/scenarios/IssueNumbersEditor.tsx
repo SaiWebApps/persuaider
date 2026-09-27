@@ -6,17 +6,23 @@ import type { GeneratedIssue } from '@/types';
  * Editable hidden numbers per issue, with the deal zone computed live so the
  * author can see whether a deal is possible and whether targets sit on the
  * right side of the walk-aways. Used by the generation preview and the editor.
+ *
+ * 'error' is numbers the API rejects, so callers must block saving on it.
+ * 'warning' is numbers the API accepts but the author probably wants to know
+ * about: walk-aways that leave no room for a deal are a legitimate scenario.
  */
-export function issueZone(issue: GeneratedIssue): { text: string; ok: boolean } {
+export type IssueZone = { text: string; severity: 'ok' | 'warning' | 'error' };
+
+export function issueZone(issue: GeneratedIssue): IssueZone {
   const higher = issue.learnerWants === 'higher';
   const zoneLow = higher ? issue.learner.reservation : issue.counterpart.reservation;
   const zoneHigh = higher ? issue.counterpart.reservation : issue.learner.reservation;
   const directionOk = higher
     ? issue.learner.target >= issue.learner.reservation && issue.counterpart.target <= issue.counterpart.reservation
     : issue.learner.target <= issue.learner.reservation && issue.counterpart.target >= issue.counterpart.reservation;
-  if (!directionOk) return { text: 'Targets must be on the right side of the walk-aways', ok: false };
-  if (zoneLow <= zoneHigh) return { text: `Deal zone: ${zoneLow.toLocaleString('en-US')} – ${zoneHigh.toLocaleString('en-US')}`, ok: true };
-  return { text: 'No overlap: no deal is possible with these limits', ok: false };
+  if (!directionOk) return { text: 'Targets must be on the right side of the walk-aways', severity: 'error' };
+  if (zoneLow <= zoneHigh) return { text: `Deal zone: ${zoneLow.toLocaleString('en-US')} – ${zoneHigh.toLocaleString('en-US')}`, severity: 'ok' };
+  return { text: 'No overlap: no deal is possible with these limits', severity: 'warning' };
 }
 
 export function IssueNumbersEditor({
@@ -82,7 +88,7 @@ export function IssueNumbersEditor({
               {field('counterpart', 'target')}
               {field('counterpart', 'reservation')}
             </div>
-            <p className={`mt-2 text-xs ${zone.ok ? 'text-gray-600 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}`} data-testid={`${idPrefix}-${idx}-zone`}>
+            <p className={`mt-2 text-xs ${zone.severity === 'ok' ? 'text-gray-600 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300'}`} data-testid={`${idPrefix}-${idx}-zone`}>
               {zone.text}
             </p>
           </div>

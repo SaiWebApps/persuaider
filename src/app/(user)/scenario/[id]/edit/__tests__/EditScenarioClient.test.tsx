@@ -102,3 +102,47 @@ describe('EditScenarioClient Slice 13 acceptance', () => {
     expect(refresh).toHaveBeenCalled();
   });
 });
+
+describe('EditScenarioClient Issue numbers and Save', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+  });
+
+  it('keeps Save enabled for walk-aways that do not overlap and saves the numbers', async () => {
+    render(<EditScenarioClient scenario={scenario} />);
+
+    expect(screen.getByTestId('issue-0-zone')).toHaveTextContent('Deal zone');
+
+    // The Landlord will not go below 1800; the Tenant will not go above 1700: no overlap.
+    fireEvent.change(screen.getByTestId('issue-0-counterpart-reservation'), { target: { value: '1800' } });
+
+    expect(screen.getByTestId('issue-0-zone')).toHaveTextContent(/no deal is possible/i);
+    expect(screen.getByTestId('edit-save')).toBeEnabled();
+    expect(screen.queryByText(/Fix the numbers/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('edit-save'));
+    await waitFor(() => expect(screen.getByTestId('edit-saved')).toBeInTheDocument());
+
+    const call = mockFetch.mock.calls.find(([url]) => url === '/api/scenarios/scenario-1');
+    expect(JSON.parse(call![1].body).issues[0].counterpart).toEqual(
+      expect.objectContaining({ target: 1800, reservation: 1800 }),
+    );
+  });
+
+  it('still blocks Save while a target sits on the wrong side of its walk-away', async () => {
+    render(<EditScenarioClient scenario={scenario} />);
+
+    fireEvent.change(screen.getByTestId('issue-0-learner-target'), { target: { value: '1900' } });
+
+    expect(screen.getByTestId('issue-0-zone')).toHaveTextContent('Targets must be on the right side of the walk-aways');
+    expect(screen.getByTestId('edit-save')).toBeDisabled();
+    expect(screen.getByText(/Fix the numbers on “Monthly rent” first\./)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('edit-save'));
+    await waitFor(() => expect(mockFetch).not.toHaveBeenCalled());
+
+    fireEvent.change(screen.getByTestId('issue-0-learner-target'), { target: { value: '1500' } });
+    expect(screen.getByTestId('edit-save')).toBeEnabled();
+  });
+});
