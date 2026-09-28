@@ -97,8 +97,10 @@ export default async function SharedScenarioPage({
             Counterparts to choose from: {scenario.personas.map((p) => p.name).join(', ')}
           </p>
         )}
-        {scenario._count.members >= 3 && (
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{scenario._count.members} people have joined.</p>
+        {scenario._count.members >= 1 && (
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {scenario._count.members === 1 ? '1 person has joined.' : `${scenario._count.members} people have joined.`}
+          </p>
         )}
         <p className="mt-6 text-gray-800 dark:text-gray-200" data-testid="share-what">
           You will chat with an AI playing the other side. It holds a hidden walk-away it will not cross. When you stop,
