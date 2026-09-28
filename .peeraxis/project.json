@@ -1,0 +1,12 @@
+{
+  "setup": "npm ci --prefer-offline --no-audit --no-fund",
+  "check": "sh scripts/peeraxis/check.sh",
+  "acceptance": "sh scripts/peeraxis/demo.sh",
+  "health": "sh scripts/peeraxis/health.sh",
+  "testFile": "e2e/playwright/acceptance/peeraxis-{name}.spec.ts",
+  "testExample": "e2e/playwright/acceptance/peeraxis-a-no-overlap.spec.ts",
+  "allowedPaths": ["src/**", "prisma/schema.prisma", "prisma/migrations/**", "prisma/seed.ts", "public/**"],
+  "copyIn": [".env.peeraxis"],
+  "mainBranch": "main",
+  "minutes": { "setup": 10, "check": 20, "acceptance": 20, "build": 60 }
+}
