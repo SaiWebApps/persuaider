@@ -33,6 +33,18 @@ while IFS= read -r line || [ -n "$line" ]; do
   esac
 done <.env.peeraxis
 case "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}" in pk_test_*) ;; *) echo "demo.sh: need a Clerk DEVELOPMENT publishable key (pk_test_)" >&2; exit 2;; esac
+# Live runs (PEERAXIS_LIVE_AI=1, used for report cards) talk to the real AI opponent: only the AI keys
+# come from .env.local. The database stays local and throwaway; nothing else from .env.local is used.
+if [ "${PEERAXIS_LIVE_AI:-}" = "1" ]; then
+  [ -f .env.local ] || { echo "demo.sh: live run needs .env.local for the AI keys" >&2; exit 2; }
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ANTHROPIC_API_KEY=*|GOOGLE_GEMINI_API_KEY=*|OPENAI_API_KEY=*)
+        name="${line%%=*}"; value="${line#*=}"; value="${value%\"}"; value="${value#\"}"
+        export "$name=$value" ;;
+    esac
+  done <.env.local
+fi
 case "${CLERK_SECRET_KEY:-}" in sk_test_*) ;; *) echo "demo.sh: need a Clerk DEVELOPMENT secret key (sk_test_)" >&2; exit 2;; esac
 
 # --- Lifecycle ------------------------------------------------------------------------------

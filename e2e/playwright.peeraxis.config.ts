@@ -19,7 +19,7 @@ export default defineConfig({
   outputDir: path.join(output, 'test-results'),
   retries: 0,
   workers: 1,
-  timeout: 120000,
+  timeout: Number(process.env.PEERAXIS_DEMO_TIMEOUT ?? 120000), // live negotiations run longer
   reporter: [['list'], ['json', { outputFile: path.join(output, 'report.json') }]],
   use: {
     baseURL: `http://localhost:${port}`, // must match the Host Clerk middleware rewrites to

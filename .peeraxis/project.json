@@ -5,8 +5,33 @@
   "health": "sh scripts/peeraxis/health.sh",
   "testFile": "e2e/playwright/acceptance/peeraxis-{name}.spec.ts",
   "testExample": "e2e/playwright/acceptance/peeraxis-a-no-overlap.spec.ts",
-  "allowedPaths": ["src/**", "prisma/schema.prisma", "prisma/migrations/**", "prisma/seed.ts", "public/**"],
-  "copyIn": [".env.peeraxis"],
+  "allowedPaths": [
+    "src/**",
+    "prisma/schema.prisma",
+    "prisma/migrations/**",
+    "prisma/seed.ts",
+    "public/**"
+  ],
+  "copyIn": [
+    ".env.peeraxis"
+  ],
   "mainBranch": "main",
-  "minutes": { "setup": 10, "check": 20, "acceptance": 20, "build": 60 }
+  "minutes": {
+    "setup": 10,
+    "check": 20,
+    "acceptance": 20,
+    "build": 60
+  },
+  "skills": [
+    "impeccable",
+    "taste",
+    "ui-ux-pro-max"
+  ],
+  "live": {
+    "copyIn": [
+      ".env.local"
+    ],
+    "notes": "To use Persuaider for real (including the AI opponent), write a Playwright spec (for example under e2e/playwright/live/) that logs in with loginAsDemo from e2e/playwright/helpers, creates or picks a scenario, and plays it through the browser, saving screenshots and the transcript into the output folder. Run it with: PEERAXIS_LIVE_AI=1 PEERAXIS_DEMO_TIMEOUT=900000 PEERAXIS_DEMO_SPEC=<spec path relative to the repo root> PEERAXIS_DEMO_OUTPUT=<output folder> sh scripts/peeraxis/demo.sh \u2014 it builds the app, starts it on a throwaway local database with the real AI keys, records video and screenshots, and runs the spec. Existing specs in e2e/playwright/ show how scenarios, chat and the summary page are driven."
+  },
+  "notes": "Persuaider is a Next.js app for practising negotiations against an AI opponent."
 }
