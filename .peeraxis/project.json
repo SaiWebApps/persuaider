@@ -1,7 +1,7 @@
 {
   "setup": "npm ci --prefer-offline --no-audit --no-fund",
   "check": "sh scripts/peeraxis/check.sh",
-  "acceptance": "sh scripts/peeraxis/demo.sh",
+  "acceptance": "PEERAXIS_LIVE_AI=1 PEERAXIS_DEMO_TIMEOUT=600000 sh scripts/peeraxis/demo.sh",
   "health": "sh scripts/peeraxis/health.sh",
   "testFile": "e2e/playwright/acceptance/peeraxis-{name}.spec.ts",
   "testExample": "e2e/playwright/acceptance/peeraxis-a-no-overlap.spec.ts",
@@ -33,5 +33,5 @@
     ],
     "notes": "To use Persuaider for real (including the AI opponent), write a Playwright spec (for example under e2e/playwright/live/) that logs in with loginAsDemo from e2e/playwright/helpers, creates or picks a scenario, and plays it through the browser, saving screenshots and the transcript into the output folder. Run it with: PEERAXIS_LIVE_AI=1 PEERAXIS_DEMO_TIMEOUT=900000 PEERAXIS_DEMO_SPEC=<spec path relative to the repo root> PEERAXIS_DEMO_OUTPUT=<output folder> sh scripts/peeraxis/demo.sh \u2014 it builds the app, starts it on a throwaway local database with the real AI keys, records video and screenshots, and runs the spec. Existing specs in e2e/playwright/ show how scenarios, chat and the summary page are driven."
   },
-  "notes": "Persuaider is a Next.js app for practising negotiations against an AI opponent."
+  "notes": "Persuaider is a Next.js app for practising negotiations against an AI opponent. Acceptance runs use the REAL AI (replies are slower and their wording varies), so tests must never depend on exact AI wording: check that replies appear, turns alternate, numbers and labels the app itself shows are right, and buttons work. Allow up to a minute per AI reply."
 }
