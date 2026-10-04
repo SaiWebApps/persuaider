@@ -86,6 +86,25 @@ export default async function SharedScenarioPage({
   const primaryButton =
     'inline-flex items-center justify-center min-h-12 px-7 py-3.5 bg-px-cloth text-px-on-cloth font-bold text-base text-center hover:bg-px-cloth-hover transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-px-cloth';
 
+  const signedOutLinks = (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+      <Link
+        href={`/register?redirect_url=${encodeURIComponent(sharePath(code, true))}`}
+        className={primaryButton}
+        data-testid="share-signup"
+      >
+        Sign up and practise
+      </Link>
+      <Link
+        href={`/login?redirect_url=${encodeURIComponent(sharePath(code, true))}`}
+        className="inline-flex items-center justify-center min-h-12 px-2 font-bold underline underline-offset-4 decoration-2 hover:text-px-cloth"
+        data-testid="share-signin"
+      >
+        I have an account
+      </Link>
+    </div>
+  );
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-px-paper text-px-ink">
       <div className="max-w-3xl mx-auto px-5 sm:px-12 py-10 sm:py-16" data-testid="share-page">
@@ -129,23 +148,11 @@ export default async function SharedScenarioPage({
             </Link>
           ) : session ? (
             <JoinButton joinCode={code} needsAccessCode={!!scenario.accessCode} autoJoin={join === '1'} />
+          ) : join === '1' && !scenario.accessCode ? (
+            // Just back from sign-up, the session can lag the first render; try to join and fall back to the links.
+            <JoinButton joinCode={code} needsAccessCode={false} autoJoin signedOut={signedOutLinks} />
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-              <Link
-                href={`/register?redirect_url=${encodeURIComponent(sharePath(code, true))}`}
-                className={primaryButton}
-                data-testid="share-signup"
-              >
-                Sign up and practise
-              </Link>
-              <Link
-                href={`/login?redirect_url=${encodeURIComponent(sharePath(code, true))}`}
-                className="inline-flex items-center justify-center min-h-12 px-2 font-bold underline underline-offset-4 decoration-2 hover:text-px-cloth"
-                data-testid="share-signin"
-              >
-                I have an account
-              </Link>
-            </div>
+            signedOutLinks
           )}
         </div>
         <p className="mt-8 border-t border-px-ink/30 pt-4 font-serif text-sm text-px-ink-2">

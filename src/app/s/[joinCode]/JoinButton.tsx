@@ -1,20 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+/** How long the "Joining…" label stays up before joining starts, so it can be read. */
+const JOIN_LABEL_MS = 1500;
 
 /**
  * Joins the scenario through the join route and then loads the dashboard with a
  * full navigation. With `autoJoin` (a visitor arriving back from sign-up) it
- * joins on mount and needs no click. A hard navigation rather than the app
- * router is deliberate: the client router drops a server-side redirect issued
- * during Clerk's post-sign-up navigation, leaving the page stuck rendering.
+ * shows a plain "Joining…" label, joins on mount and needs no click; if the
+ * join reports the visitor is not signed in, it shows `signedOut` instead. A
+ * hard navigation rather than the app router is deliberate: the client router
+ * drops a server-side redirect issued during Clerk's post-sign-up navigation,
+ * leaving the page stuck rendering.
  */
-export function JoinButton({ joinCode, needsAccessCode, autoJoin = false }: { joinCode: string; needsAccessCode: boolean; autoJoin?: boolean }) {
+export function JoinButton({
+  joinCode,
+  needsAccessCode,
+  autoJoin = false,
+  signedOut,
+}: {
+  joinCode: string;
+  needsAccessCode: boolean;
+  autoJoin?: boolean;
+  signedOut?: ReactNode;
+}) {
   const willAutoJoin = autoJoin && !needsAccessCode;
   const [accessCode, setAccessCode] = useState('');
-  const [busy, setBusy] = useState(willAutoJoin);
+  const [busy, setBusy] = useState(false);
+  const [autoJoining, setAutoJoining] = useState(willAutoJoin);
+  const [isSignedOut, setIsSignedOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const started = useRef(false);
 
   const join = async (code: string) => {
     try {
@@ -27,20 +43,35 @@ export function JoinButton({ joinCode, needsAccessCode, autoJoin = false }: { jo
         window.location.assign('/dashboard?notice=joined');
         return;
       }
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Could not join');
+      if (res.status === 401 && signedOut) {
+        setIsSignedOut(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Could not join');
+      }
     } catch {
       setError('Could not join');
     }
     setBusy(false);
+    setAutoJoining(false);
   };
 
   useEffect(() => {
-    if (!willAutoJoin || started.current) return;
-    started.current = true;
-    void join('');
+    if (!willAutoJoin) return;
+    const timer = window.setTimeout(() => void join(''), JOIN_LABEL_MS);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [willAutoJoin]);
+
+  if (isSignedOut) return <>{signedOut}</>;
+
+  if (autoJoining) {
+    return (
+      <p className="min-h-12 flex items-center text-xl font-bold" role="status" data-testid="share-joining">
+        Joining…
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-3">
