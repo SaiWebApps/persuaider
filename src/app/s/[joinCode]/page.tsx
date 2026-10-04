@@ -59,10 +59,17 @@ export default async function SharedScenarioPage({
   const scenario = await loadShared(code);
   if (!scenario || scenario.status !== 'published') {
     return (
-      <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
-        <div className="text-center">
-          <p className="text-gray-700 dark:text-gray-300" data-testid="share-missing">This scenario link is not active.</p>
-          <Link href="/" className="mt-4 inline-block text-indigo-600 hover:underline">What is Persuaider?</Link>
+      <main className="min-h-screen overflow-x-hidden bg-px-paper text-px-ink flex items-center p-5 sm:p-12">
+        <div className="w-full max-w-2xl mx-auto border-t-4 border-px-ink pt-6">
+          <p className="text-4xl sm:text-5xl font-bold leading-[0.98] tracking-[-0.02em] [font-stretch:72%] [text-wrap:balance]" data-testid="share-missing">
+            This scenario link is not active.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center min-h-11 font-bold underline underline-offset-4 decoration-2 hover:text-px-cloth"
+          >
+            What is Persuaider?
+          </Link>
         </div>
       </main>
     );
@@ -76,56 +83,64 @@ export default async function SharedScenarioPage({
   const learnerRole = scenario.roles.find((r) => r.id === scenario.learnerRoleId)?.name ?? scenario.userRole;
   const otherSides = scenario.roles.filter((r) => r.id !== scenario.learnerRoleId).map((r) => r.name);
 
+  const primaryButton =
+    'inline-flex items-center justify-center min-h-12 px-7 py-3.5 bg-px-cloth text-px-on-cloth font-bold text-base text-center hover:bg-px-cloth-hover transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-px-cloth';
+
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-      <div className="max-w-2xl mx-auto px-6 py-16" data-testid="share-page">
-        <p className="text-sm font-medium text-indigo-600">A Persuaider scenario{scenario.createdBy?.username ? ` from ${scenario.createdBy.username}` : ''}</p>
-        <h1 className="mt-2 text-3xl font-bold" data-testid="share-title">{scenario.title}</h1>
-        <p className="mt-3 text-gray-700 dark:text-gray-300">{scenario.description}</p>
-        <dl className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-            <dt className="text-gray-500 dark:text-gray-400">You play</dt>
-            <dd className="font-medium" data-testid="share-you-play">{learnerRole}</dd>
+    <main className="min-h-screen overflow-x-hidden bg-px-paper text-px-ink">
+      <div className="max-w-3xl mx-auto px-5 sm:px-12 py-10 sm:py-16" data-testid="share-page">
+        <p className="text-xs sm:text-sm font-extrabold uppercase tracking-[0.04em] [font-stretch:125%] text-px-ink-2">
+          A Persuaider scenario{scenario.createdBy?.username ? ` from ${scenario.createdBy.username}` : ''}
+        </p>
+        <h1
+          className="mt-4 border-t-4 border-px-ink pt-5 text-[2.75rem] sm:text-6xl font-bold leading-[0.95] tracking-[-0.02em] [font-stretch:72%] [text-wrap:balance] break-words"
+          data-testid="share-title"
+        >
+          {scenario.title}
+        </h1>
+        <p className="mt-5 font-serif text-lg leading-relaxed text-px-ink-2 max-w-[60ch]">{scenario.description}</p>
+        <dl className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-1">
+          <div className="bg-px-field text-px-on p-5" data-testid="share-you-play-panel">
+            <dt className="text-xs font-bold uppercase tracking-[0.06em] text-px-on-2">You play</dt>
+            <dd className="mt-2 text-3xl font-bold leading-none [font-stretch:72%] break-words" data-testid="share-you-play">{learnerRole}</dd>
           </div>
-          <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
-            <dt className="text-gray-500 dark:text-gray-400">Against</dt>
-            <dd className="font-medium">{otherSides.length > 0 ? otherSides.join(', ') : scenario.aiRole}</dd>
+          <div className="bg-px-field text-px-on p-5" data-testid="share-against-panel">
+            <dt className="text-xs font-bold uppercase tracking-[0.06em] text-px-on-2">Against</dt>
+            <dd className="mt-2 text-3xl font-bold leading-none [font-stretch:72%] break-words" data-testid="share-against">
+              {otherSides.length > 0 ? otherSides.join(', ') : scenario.aiRole}
+            </dd>
           </div>
         </dl>
-        {scenario.personas.length > 0 && (
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            Counterparts to choose from: {scenario.personas.map((p) => p.name).join(', ')}
-          </p>
-        )}
-        {scenario._count.members >= 1 && (
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {scenario._count.members === 1 ? '1 person has joined.' : `${scenario._count.members} people have joined.`}
-          </p>
-        )}
-        <p className="mt-6 text-gray-800 dark:text-gray-200" data-testid="share-what">
+        <div className="mt-4 space-y-1 text-sm text-px-ink-2">
+          {scenario.personas.length > 0 && <p>Counterparts to choose from: {scenario.personas.map((p) => p.name).join(', ')}</p>}
+          {scenario._count.members >= 1 && (
+            <p>{scenario._count.members === 1 ? '1 person has joined.' : `${scenario._count.members} people have joined.`}</p>
+          )}
+        </div>
+        <p className="mt-8 font-serif text-lg leading-relaxed max-w-[60ch]" data-testid="share-what">
           You will chat with an AI playing the other side. It holds a hidden walk-away it will not cross. When you stop,
           you see what you got, what you left on the table, and what to change. About ten minutes.
         </p>
 
         <div className="mt-8">
           {session && isMember ? (
-            <Link href="/dashboard" className="inline-block px-5 py-3 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700" data-testid="share-open-dashboard">
+            <Link href="/dashboard" className={primaryButton} data-testid="share-open-dashboard">
               You already have this scenario. Open dashboard
             </Link>
           ) : session ? (
             <JoinButton joinCode={code} needsAccessCode={!!scenario.accessCode} autoJoin={join === '1'} />
           ) : (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
               <Link
                 href={`/register?redirect_url=${encodeURIComponent(sharePath(code, true))}`}
-                className="px-5 py-3 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700"
+                className={primaryButton}
                 data-testid="share-signup"
               >
                 Sign up and practise
               </Link>
               <Link
                 href={`/login?redirect_url=${encodeURIComponent(sharePath(code, true))}`}
-                className="px-5 py-3 rounded-md border border-gray-300 dark:border-gray-600 font-medium"
+                className="inline-flex items-center justify-center min-h-12 px-2 font-bold underline underline-offset-4 decoration-2 hover:text-px-cloth"
                 data-testid="share-signin"
               >
                 I have an account
@@ -133,7 +148,9 @@ export default async function SharedScenarioPage({
             </div>
           )}
         </div>
-        <p className="mt-6 text-xs text-gray-500 dark:text-gray-400">Your side&apos;s confidential brief and the hidden numbers appear only once you have joined.</p>
+        <p className="mt-8 border-t border-px-ink/30 pt-4 font-serif text-sm text-px-ink-2">
+          Your side&apos;s confidential brief and the hidden numbers appear only once you have joined.
+        </p>
       </div>
     </main>
   );

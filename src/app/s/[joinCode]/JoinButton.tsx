@@ -62,7 +62,7 @@ export function JoinButton({ joinCode, needsAccessCode, autoJoin = false }: { jo
         }}
         disabled={busy}
         data-testid="share-join"
-        className="px-5 py-3 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-60"
+        className="inline-flex items-center justify-center min-h-12 px-7 py-3.5 bg-px-cloth text-px-on-cloth font-bold hover:bg-px-cloth-hover disabled:opacity-60"
       >
         {busy ? 'Joining…' : 'Practise this scenario'}
       </button>
