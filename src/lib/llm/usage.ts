@@ -9,7 +9,7 @@ import type { LLMMessage, LLMResponse } from './types';
  * made, so a runaway session cannot spend past the cap.
  */
 
-export type LlmPurpose = 'turn' | 'turn_stream' | 'evaluation' | 'deal' | 'generation';
+export type LlmPurpose = 'turn' | 'turn_stream' | 'run_turn' | 'evaluation' | 'deal' | 'generation';
 
 export interface Meter {
   userId: string;

@@ -6,7 +6,7 @@ import { checkApiRateLimit } from '@/lib/ratelimit';
 // requireAdmin() in API routes, both of which read the database role — the
 // single source of truth. The middleware deliberately does not consult Clerk
 // metadata, so there is one place a role can come from.
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/persona(.*)', '/admin(.*)']);
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/persona(.*)', '/run(.*)', '/admin(.*)']);
 const isAuthPage = createRouteMatcher(['/login(.*)', '/register(.*)', '/forgot-password(.*)', '/reset-password(.*)', '/verify-email(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
