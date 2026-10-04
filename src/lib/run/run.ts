@@ -104,9 +104,10 @@ export async function getRunReport(runId: string, userId: string) {
     readRunResult(run.result) ?? runResult(status, readIssues(run.scenario.issues).length > 0);
   return {
     id: run.id,
-    scenarioTitle: run.scenario.title,
-    learnerSide: sides.learner.name,
-    counterpartSide: sides.counterpart,
+    // The copies saved when the run ended; older runs fall back to the live scenario.
+    scenarioTitle: run.scenarioTitle ?? run.scenario.title,
+    learnerSide: run.learnerSide ?? sides.learner.name,
+    counterpartSide: run.counterpartSide ?? sides.counterpart,
     result,
     // Only the copy saved when the run ended; an unscored run has no Deal rows.
     deal: result === 'unscored' ? null : readDealOutcome(run.deal),
@@ -170,6 +171,11 @@ export async function takeRunTurn(runId: string, userId: string, seenTurns: numb
       status,
       result: status === 'running' ? null : runResult(status, issues.length > 0),
       deal: dealOutcome ? JSON.stringify(dealOutcome) : null,
+      ...(status !== 'running' && {
+        scenarioTitle: run.scenario.title,
+        learnerSide: sides.learner.name,
+        counterpartSide: sides.counterpart,
+      }),
     },
   });
   if (written.count === 0) {
