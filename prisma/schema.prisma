@@ -161,6 +161,7 @@ model SimulationRun {
   personaId   String    // the counterpart the owner picked
   status      String    @default("running") // "running" | "deal" | "no_deal" | "limit"
   transcript  String    @default("[]") // JSON array of { side: "learner" | "counterpart", content }
+  result      String?   // saved the moment the run ends: "deal" | "no_deal" | "unscored"
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

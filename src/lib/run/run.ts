@@ -16,9 +16,12 @@ import {
   nextSide,
   outcomeAfterTurn,
   parseTurnReply,
+  readRunResult,
   readRunStatus,
   readTranscript,
+  runResult,
   runWinCondition,
+  type RunResult,
   type RunStatus,
   type RunTurn,
 } from './transcript';
@@ -89,6 +92,24 @@ export async function getRunView(runId: string, userId: string) {
   };
 }
 
+/** A finished run's report: its saved result and its turns; null while the run is still going. */
+export async function getRunReport(runId: string, userId: string) {
+  const run = await loadRun(runId, userId);
+  const status = readRunStatus(run.status);
+  if (status === 'running') return null;
+  const sides = await runSides(run);
+  const result: RunResult =
+    readRunResult(run.result) ?? runResult(status, readIssues(run.scenario.issues).length > 0);
+  return {
+    id: run.id,
+    scenarioTitle: run.scenario.title,
+    learnerSide: sides.learner.name,
+    counterpartSide: sides.counterpart,
+    result,
+    turns: readTranscript(run.transcript),
+  };
+}
+
 /**
  * Adds the next turn when the caller has seen `seenTurns` turns. If the run moved on
  * meanwhile (another tab, a retried request) or has ended, nothing is generated and
@@ -133,7 +154,11 @@ export async function takeRunTurn(runId: string, userId: string, seenTurns: numb
 
   const written = await prisma.simulationRun.updateMany({
     where: { id: run.id, status: 'running', transcript: run.transcript },
-    data: { transcript: JSON.stringify(turns), status },
+    data: {
+      transcript: JSON.stringify(turns),
+      status,
+      result: status === 'running' ? null : runResult(status, issues.length > 0),
+    },
   });
   if (written.count === 0) {
     const fresh = await loadRun(runId, userId);

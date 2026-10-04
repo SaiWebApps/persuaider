@@ -24,6 +24,25 @@ export const OUTCOME_LABELS: Record<Exclude<RunStatus, 'running'>, string> = {
   limit: 'Message limit reached',
 };
 
+/** A finished run's result as the report shows it, saved with the run when it ends. */
+export type RunResult = 'deal' | 'no_deal' | 'unscored';
+
+export const RESULT_LABELS: Record<RunResult, string> = {
+  deal: 'Deal reached',
+  no_deal: 'No deal',
+  unscored: 'Unscored',
+};
+
+/** Unscored when the scenario has no issues; otherwise only an agreement is a deal (the limit counts as no deal). */
+export function runResult(status: Exclude<RunStatus, 'running'>, hasIssues: boolean): RunResult {
+  if (!hasIssues) return 'unscored';
+  return status === 'deal' ? 'deal' : 'no_deal';
+}
+
+export function readRunResult(value: string | null | undefined): RunResult | null {
+  return value === 'deal' || value === 'no_deal' || value === 'unscored' ? value : null;
+}
+
 const transcriptSchema = z.array(z.object({ side: z.enum(['learner', 'counterpart']), content: z.string() }));
 
 export function readTranscript(text: string | null | undefined): RunTurn[] {

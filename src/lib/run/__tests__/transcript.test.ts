@@ -4,6 +4,7 @@ import {
   outcomeAfterTurn,
   parseTurnReply,
   readTranscript,
+  runResult,
   type RunTurn,
 } from '../transcript';
 
@@ -85,5 +86,18 @@ describe('parseTurnReply', () => {
 
   it('plain text is the content with no break-off', () => {
     expect(parseTurnReply('Fine, 1,200 a month.')).toEqual({ content: 'Fine, 1,200 a month.', endsWithoutDeal: false });
+  });
+});
+
+describe('runResult', () => {
+  it('is a deal only when the run ended with an agreement', () => {
+    expect(runResult('deal', true)).toBe('deal');
+    expect(runResult('no_deal', true)).toBe('no_deal');
+    expect(runResult('limit', true)).toBe('no_deal');
+  });
+
+  it('is unscored when the scenario has no issues', () => {
+    expect(runResult('limit', false)).toBe('unscored');
+    expect(runResult('no_deal', false)).toBe('unscored');
   });
 });

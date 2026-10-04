@@ -79,6 +79,9 @@ describeIfPostgres('AI vs AI run routes (real database)', () => {
     expect(state.turns.map((t) => t.side)).toEqual(['counterpart', 'learner', 'counterpart', 'learner', 'counterpart']);
     expect(state.turns[0].content).toBe('Let us discuss the rent.');
     expect(state.status).toBe('limit');
+    // The scenario has no issues, so the result saved with the run is Unscored.
+    const saved = await prisma.simulationRun.findUniqueOrThrow({ where: { id: run.id }, select: { result: true } });
+    expect(saved.result).toBe('unscored');
 
     // A stale caller gets the current state and no extra turn is written.
     const stale = await (await turn(run.id, 1)).json();

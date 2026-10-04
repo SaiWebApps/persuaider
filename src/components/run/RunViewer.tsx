@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { OUTCOME_LABELS, nextSide, type RunSide, type RunStatus, type RunTurn } from '@/lib/run/transcript';
+import { RunMessage } from './RunMessage';
 import { RunOutcome } from './RunOutcome';
 
 interface RunViewerProps {
@@ -143,19 +144,7 @@ export function RunViewer({ runId, scenarioTitle, personaName, learnerSide, coun
           <div aria-live="polite">
             {turns.map((turn, i) => (
               <TurnRow key={i} index={i} side={turn.side} rowRef={i === turns.length - 1 ? lastTurnRef : undefined}>
-                <div
-                  data-testid="run-message"
-                  className={`rounded-xl bg-white dark:bg-gray-800 px-4 py-3 text-[14.5px] leading-relaxed border ${
-                    turn.side === 'learner'
-                      ? 'border-indigo-200 dark:border-indigo-800 border-l-[3px] border-l-indigo-600'
-                      : 'border-slate-300 dark:border-gray-600'
-                  }`}
-                >
-                  <div className={`font-mono text-[11px] mb-1.5 ${turn.side === 'learner' ? 'text-indigo-500 dark:text-indigo-300' : 'text-slate-400'}`}>
-                    {sideLabel(turn.side)}
-                  </div>
-                  <p className="whitespace-pre-wrap">{turn.content}</p>
-                </div>
+                <RunMessage side={turn.side} label={sideLabel(turn.side)} content={turn.content} />
               </TurnRow>
             ))}
             {running && !error && (
@@ -185,7 +174,7 @@ export function RunViewer({ runId, scenarioTitle, personaName, learnerSide, coun
             </div>
           )}
 
-          {!running && <RunOutcome ref={outcomeRef} status={status} label={OUTCOME_LABELS[status as Exclude<RunStatus, 'running'>]} />}
+          {!running && <RunOutcome ref={outcomeRef} runId={runId} status={status} label={OUTCOME_LABELS[status as Exclude<RunStatus, 'running'>]} />}
         </div>
 
         <p className="text-xs text-slate-500 dark:text-gray-400">Turns alternate across the gap; your side is always on the right.</p>

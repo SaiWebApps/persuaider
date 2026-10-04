@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { RunStatus } from '@/lib/run/transcript';
 
 const TONE: Record<Exclude<RunStatus, 'running'>, string> = {
@@ -10,14 +10,15 @@ const TONE: Record<Exclude<RunStatus, 'running'>, string> = {
 };
 
 interface RunOutcomeProps {
+  runId: string;
   status: RunStatus;
   label: string;
   ref?: React.Ref<HTMLDivElement>;
 }
 
 /** The end of a run: one loud status line and the See report button. */
-export function RunOutcome({ status, label, ref }: RunOutcomeProps) {
-  const [reportNote, setReportNote] = useState(false);
+export function RunOutcome({ runId, status, label, ref }: RunOutcomeProps) {
+  const router = useRouter();
   const tone = status === 'running' ? TONE.limit : TONE[status];
   return (
     <div ref={ref} className={`border-t-4 px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${tone}`}>
@@ -31,12 +32,11 @@ export function RunOutcome({ status, label, ref }: RunOutcomeProps) {
         <button
           type="button"
           data-testid="see-report"
-          onClick={() => setReportNote(true)}
+          onClick={() => router.push(`/run/${runId}/report`)}
           className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
         >
           See report
         </button>
-        {reportNote && <p className="text-xs opacity-80">The report for runs is coming next.</p>}
       </div>
     </div>
   );
