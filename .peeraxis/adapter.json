@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "setup": "npm ci --prefer-offline --no-audit --no-fund",
-  "check": "sh scripts/peeraxis/check.sh",
-  "copyIn": [".env.peeraxis"],
-  "demo": { "command": "sh scripts/peeraxis/demo.sh" },
-  "roles": { "builder": "claude", "reviewer": "codex" }
-}
