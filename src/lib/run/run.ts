@@ -11,6 +11,8 @@ import { readDealOutcome } from '@/lib/codec/summary';
 import { computeDealOutcome } from '@/lib/scoring/deal';
 import { NotFoundError } from '@/types';
 import { buildLearnerSidePrompt, RUN_REPLY_INSTRUCTION } from './prompts';
+import { readRunFeedback } from './feedback';
+import { writeRunFeedback } from './write-feedback';
 import {
   asChatMessages,
   DEFAULT_RUN_MAX_MESSAGES,
@@ -111,6 +113,8 @@ export async function getRunReport(runId: string, userId: string) {
     result,
     // Only the copy saved when the run ended; an unscored run has no Deal rows.
     deal: result === 'unscored' ? null : readDealOutcome(run.deal),
+    // Written once when the run ended; empty lists mean it could not be written.
+    feedback: readRunFeedback(run.feedback),
     turns: readTranscript(run.transcript),
   };
 }
@@ -164,12 +168,22 @@ export async function takeRunTurn(runId: string, userId: string, seenTurns: numb
       ? computeDealOutcome(status === 'deal' ? deal : { reached: false, terms: deal?.terms ?? [] }, issues)
       : null;
 
+  // Written once, by the same request that ends the run, so the report never waits for it.
+  const result = status === 'running' ? null : runResult(status, issues.length > 0);
+  const feedback = result
+    ? await writeRunFeedback(
+        { scenarioTitle: run.scenario.title, learnerSide: sides.learner.name, counterpartSide: sides.counterpart, result, turns, deal: dealOutcome },
+        { userId, purpose: 'run_feedback' }
+      )
+    : null;
+
   const written = await prisma.simulationRun.updateMany({
     where: { id: run.id, status: 'running', transcript: run.transcript },
     data: {
       transcript: JSON.stringify(turns),
       status,
-      result: status === 'running' ? null : runResult(status, issues.length > 0),
+      result,
+      feedback: feedback ? JSON.stringify(feedback) : null,
       deal: dealOutcome ? JSON.stringify(dealOutcome) : null,
       ...(status !== 'running' && {
         scenarioTitle: run.scenario.title,

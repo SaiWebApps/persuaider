@@ -166,6 +166,7 @@ model SimulationRun {
   scenarioTitle   String?   // saved the moment the run ends, so later edits never change the report
   learnerSide     String?   // saved the moment the run ends
   counterpartSide String?   // saved the moment the run ends
+  feedback        String?   // JSON: RunFeedback written once by the AI the moment the run ends; empty lists when it could not be written
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

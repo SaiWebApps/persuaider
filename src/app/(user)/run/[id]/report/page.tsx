@@ -5,6 +5,7 @@ import { getRunReport } from '@/lib/run/run';
 import { RESULT_LABELS, type RunResult } from '@/lib/run/transcript';
 import { RunMessage } from '@/components/run/RunMessage';
 import { NotFoundError } from '@/types';
+import { formatFigure, type FeedbackPoint } from '@/lib/run/feedback';
 
 // Reads per-request run data from the database; opt out of static prerendering.
 export const dynamic = 'force-dynamic';
@@ -33,14 +34,10 @@ export default async function RunReportPage({ params }: { params: Promise<{ id: 
   const sideLabel = (side: 'learner' | 'counterpart') =>
     side === 'learner' ? `${report.learnerSide} (You play)` : report.counterpartSide;
 
-  // Figures read as on the summary page.
-  const fmt = (value: number | null, unit?: string) => {
-    if (value === null) return '—';
-    const n = value.toLocaleString('en-US');
-    if (unit === 'USD' || unit === '$') return `$${n}`;
-    if (unit === '%') return `${n}%`;
-    return unit ? `${n} ${unit}` : n;
-  };
+  // Figures read as on the summary page; the feedback checks use the same wording.
+  const fmt = formatFigure;
+  const { wentWell, goneBetter } = report.feedback;
+  const hasFeedback = wentWell.length > 0 && goneBetter.length > 0;
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-gray-950 text-slate-900 dark:text-gray-100">
@@ -99,6 +96,17 @@ export default async function RunReportPage({ params }: { params: Promise<{ id: 
           </section>
         )}
 
+        <section data-testid="report-feedback" className="flex flex-col gap-3">
+          {hasFeedback ? (
+            <>
+              <FeedbackList title="What went well" testId="report-went-well" points={wentWell} />
+              <FeedbackList title="What could have gone better" testId="report-gone-better" points={goneBetter} />
+            </>
+          ) : (
+            <p className="text-sm text-slate-600 dark:text-gray-300">Feedback couldn&apos;t be written for this run.</p>
+          )}
+        </section>
+
         <section aria-labelledby="report-turns-heading" className="flex flex-col gap-3">
           <h2 id="report-turns-heading" className="text-sm font-semibold text-slate-600 dark:text-gray-300">
             Turns ({report.turns.length})
@@ -112,6 +120,25 @@ export default async function RunReportPage({ params }: { params: Promise<{ id: 
           </ol>
         </section>
       </div>
+    </div>
+  );
+}
+
+function FeedbackList({ title, testId, points }: { title: string; testId: string; points: FeedbackPoint[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h2 className="text-sm font-semibold text-slate-600 dark:text-gray-300">{title}</h2>
+      <ul data-testid={testId} className="flex flex-col gap-2">
+        {points.map((point, i) => (
+          <li
+            key={i}
+            data-testid="report-point"
+            className="rounded-lg border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-3 text-[14.5px] leading-relaxed"
+          >
+            {point.before}&quot;<span data-testid="report-point-quote" className="font-medium">{point.quote}</span>&quot;{point.after}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
