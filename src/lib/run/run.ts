@@ -120,6 +120,27 @@ export async function getRunReport(runId: string, userId: string) {
 }
 
 /**
+ * Per scenario, the signed-in person's own run that finished most recently (by when it
+ * finished, not when it started), with the result its report shows.
+ */
+export async function lastFinishedRuns(userId: string): Promise<Map<string, { id: string; result: RunResult }>> {
+  const runs = await prisma.simulationRun.findMany({
+    where: { userId, status: { not: 'running' }, finishedAt: { not: null } },
+    orderBy: [{ finishedAt: 'desc' }, { id: 'desc' }],
+    distinct: ['scenarioId'],
+    select: { id: true, scenarioId: true, status: true, result: true, scenario: { select: { issues: true } } },
+  });
+  const last = new Map<string, { id: string; result: RunResult }>();
+  for (const run of runs) {
+    const status = readRunStatus(run.status);
+    if (status === 'running') continue;
+    const result = readRunResult(run.result) ?? runResult(status, readIssues(run.scenario.issues).length > 0);
+    last.set(run.scenarioId, { id: run.id, result });
+  }
+  return last;
+}
+
+/**
  * Adds the next turn when the caller has seen `seenTurns` turns. If the run moved on
  * meanwhile (another tab, a retried request) or has ended, nothing is generated and
  * the current state comes back, so a turn is never written twice.
@@ -186,6 +207,7 @@ export async function takeRunTurn(runId: string, userId: string, seenTurns: numb
       feedback: feedback ? JSON.stringify(feedback) : null,
       deal: dealOutcome ? JSON.stringify(dealOutcome) : null,
       ...(status !== 'running' && {
+        finishedAt: new Date(),
         scenarioTitle: run.scenario.title,
         learnerSide: sides.learner.name,
         counterpartSide: sides.counterpart,

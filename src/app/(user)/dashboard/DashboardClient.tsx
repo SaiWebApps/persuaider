@@ -21,6 +21,8 @@ interface ScenarioWithPersonas {
   learnerRoleName?: string | null;
   canEdit?: boolean;
   joinCode?: string;
+  /** The signed-in person's run of this scenario that finished most recently. */
+  lastAiRun?: { id: string; resultLabel: string } | null;
   personas: PersonaWithStatus[];
 }
 
@@ -243,6 +245,15 @@ export function DashboardClient({ scenarios: initialScenarios }: DashboardClient
                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{scenario.title}</h3>
                 <span className="flex flex-wrap gap-3">
                   <RunAiVsAiButton scenarioId={scenario.id} personas={scenario.personas} />
+                  {scenario.lastAiRun && (
+                    <a
+                      href={`/run/${scenario.lastAiRun.id}/report`}
+                      className="text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline"
+                      data-testid={`last-ai-run-${scenario.id}`}
+                    >
+                      {`Last AI run: ${scenario.lastAiRun.resultLabel}`}
+                    </a>
+                  )}
                   {scenario.joinCode && <CopyShareLink joinCode={scenario.joinCode} testId={`share-scenario-${scenario.id}`} />}
                   {scenario.canEdit && (
                     <a href={`/scenario/${scenario.id}/edit`} className="text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline" data-testid={`edit-scenario-${scenario.id}`}>

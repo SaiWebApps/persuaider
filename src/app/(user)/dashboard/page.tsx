@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/db/client';
 import { DashboardClient } from './DashboardClient';
+import { lastFinishedRuns } from '@/lib/run/run';
+import { RESULT_LABELS } from '@/lib/run/transcript';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SignOutButton } from '@clerk/nextjs';
 
@@ -15,6 +17,11 @@ const NOTICES: Record<string, string> = {
   'not-your-scenario': 'Only the creator of a scenario can edit it.',
   joined: 'You joined the scenario. Pick a counterpart below to start.',
 };
+
+/** The Last AI run link reads the result exactly as the run's report does. */
+function lastAiRunLink(run: { id: string; result: keyof typeof RESULT_LABELS } | undefined) {
+  return run ? { id: run.id, resultLabel: RESULT_LABELS[run.result] } : null;
+}
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const { notice } = await searchParams;
@@ -63,6 +70,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     },
   });
 
+  // Only runs this person started and saw to the end; the newest finish per scenario.
+  const lastRuns = await lastFinishedRuns(session.user.id);
+
   // Build scenarios with personas and their statuses
   const scenarios = memberships.map((m) => ({
     id: m.scenarioId,
@@ -72,6 +82,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     aiRole: m.scenario.aiRole,
     canEdit: m.scenario.createdById === session.user.id || session.user.role === 'admin',
     joinCode: m.scenario.joinCode,
+    lastAiRun: lastAiRunLink(lastRuns.get(m.scenarioId)),
     // The side the learner plays: the scenario's learnerRoleId, else the first role no persona plays.
     learnerRoleName:
       m.scenario.roles.length > 0

@@ -167,6 +167,7 @@ model SimulationRun {
   learnerSide     String?   // saved the moment the run ends
   counterpartSide String?   // saved the moment the run ends
   feedback        String?   // JSON: RunFeedback written once by the AI the moment the run ends; empty lists when it could not be written
+  finishedAt      DateTime? // the moment the run ended; the dashboard's Last AI run is the newest of these
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -176,6 +177,7 @@ model SimulationRun {
 
   @@map("simulation_runs")
   @@index([userId])
+  @@index([userId, scenarioId, finishedAt])
 }
 
 model Summary {
