@@ -7,6 +7,8 @@ import type { LLMMessage } from '@/lib/llm/types';
 import { personaPromptSelect, scenarioPromptSelect } from '@/lib/conversation/context';
 import { assertCanPractice, defaultGreeting, resolveLearnerRole } from '@/lib/conversation/start';
 import { readIssues, readWinCondition } from '@/lib/codec/scenario';
+import { readDealOutcome } from '@/lib/codec/summary';
+import { computeDealOutcome } from '@/lib/scoring/deal';
 import { NotFoundError } from '@/types';
 import { buildLearnerSidePrompt, RUN_REPLY_INSTRUCTION } from './prompts';
 import {
@@ -106,6 +108,8 @@ export async function getRunReport(runId: string, userId: string) {
     learnerSide: sides.learner.name,
     counterpartSide: sides.counterpart,
     result,
+    // Only the copy saved when the run ended; an unscored run has no Deal rows.
+    deal: result === 'unscored' ? null : readDealOutcome(run.deal),
     turns: readTranscript(run.transcript),
   };
 }
@@ -152,12 +156,20 @@ export async function takeRunTurn(runId: string, userId: string, seenTurns: numb
     dealReached: deal?.reached ?? false,
   });
 
+  // Saved once, the moment the run ends, in the same shape as a summary's deal.
+  // Without an agreement every issue reads "No agreement".
+  const dealOutcome =
+    status !== 'running' && issues.length > 0
+      ? computeDealOutcome(status === 'deal' ? deal : { reached: false, terms: deal?.terms ?? [] }, issues)
+      : null;
+
   const written = await prisma.simulationRun.updateMany({
     where: { id: run.id, status: 'running', transcript: run.transcript },
     data: {
       transcript: JSON.stringify(turns),
       status,
       result: status === 'running' ? null : runResult(status, issues.length > 0),
+      deal: dealOutcome ? JSON.stringify(dealOutcome) : null,
     },
   });
   if (written.count === 0) {

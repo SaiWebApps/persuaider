@@ -162,6 +162,7 @@ model SimulationRun {
   status      String    @default("running") // "running" | "deal" | "no_deal" | "limit"
   transcript  String    @default("[]") // JSON array of { side: "learner" | "counterpart", content }
   result      String?   // saved the moment the run ends: "deal" | "no_deal" | "unscored"
+  deal        String?   // JSON: DealOutcome saved the moment the run ends (same shape as Summary.deal); null when unscored
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
