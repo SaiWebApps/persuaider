@@ -24,28 +24,30 @@ describe('run feedback checks', () => {
     expect(quotesTurn('i can offer', turns[0]!)).toBe(false);
   });
 
-  it('accepts a point naming an issue and its figure, and keeps the quote apart', () => {
-    const point = ok('When you said "I can offer $1,700 a month", you started close to their Monthly rent walk-away: $1,600, which left little room to give.');
+  it('accepts a natural point naming a hidden figure, and keeps the quote apart', () => {
+    const point = ok('When you said "I can offer $1,700 a month", you came in $200 under the $1,900 they hoped for.');
     expect(point.quote).toBe('I can offer $1,700 a month');
     expect(pointText(point)).toContain('"I can offer $1,700 a month"');
+    expect(ok('Saying "I can offer" left their minimum of $1,600 unexplored.').quote).toBe('I can offer');
+    expect(ok('You said "I can offer". They hoped for $1,900').quote).toBe('I can offer'); // shape is not checked
   });
 
   it('rejects points that break the rules', () => {
-    expect(fails('You said "I can offer $1,800" and that was near their Monthly rent target $1,900.')).toBe(true); // not in a turn
-    expect(fails('You said "I can offer" which sat near their Monthly rent target of $1,900.')).toBe(true); // words between
-    expect(fails('You said "I can offer" which sat near their monthly rent target $1,900.')).toBe(true); // case
-    expect(fails('You said "I can offer" near their Monthly rent target $1,900. It helped.')).toBe(true); // two sentences
-    expect(fails('You said "I can offer" near their Monthly rent target $1,900 as an anchor.')).toBe(true); // forbidden
-    expect(fails('You said "I can offer" near their Monthly rent target $1,900')).toBe(true); // no full stop
+    expect(fails('You said "I can offer $1,800" and they hoped for $1,900.')).toBe(true); // not in a turn
+    expect(fails('You said "i can offer" and they hoped for $1,900.')).toBe(true); // case
+    expect(fails('You said "I can offer", leaving $400 of room.')).toBe(true); // no hidden figure
+    expect(fails('You said "I can offer", near their $1,9000 hope.')).toBe(true); // not the figure as printed
+    expect(fails('You said "I can offer" and they hoped for $1,900 as an anchor.')).toBe(true); // forbidden
   });
 
-  it('on an unscored run allows figures only inside the quote', () => {
+  it('on an unscored run checks only the quote and the jargon', () => {
     expect(ok('When you said "I can offer $1,700 a month", you showed them you were serious about staying.', null).quote).toBe('I can offer $1,700 a month');
-    expect(fails('When you said "I can offer", you came in 200 dollars under them.', null)).toBe(true);
+    expect(ok('When you said "I can offer", you came in 200 dollars under them', null).quote).toBe('I can offer');
+    expect(fails('When you said "I can offer", your utility was low.', null)).toBe(true);
   });
 
   it('needs both lists filled; saved feedback reads back as written', () => {
-    const good = 'When you said "Fine, we have a deal", you closed above their Monthly rent walk-away $1,600 without testing for more.';
+    const good = 'When you said "Fine, we have a deal", you closed above the $1,600 they would accept without testing for more.';
     expect('problems' in checkFeedbackReply(JSON.stringify({ wentWell: [good], goneBetter: [] }), turns, figures)).toBe(true);
     const checked = checkFeedbackReply(JSON.stringify({ wentWell: [good], goneBetter: [good] }), turns, figures);
     expect('feedback' in checked && readRunFeedback(JSON.stringify(checked.feedback))).toEqual('feedback' in checked && checked.feedback);

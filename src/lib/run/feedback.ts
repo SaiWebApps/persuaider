@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Pure rules for a run's feedback: the AI writes each point as one sentence that
  * quotes a You-play turn; code checks every point before it is saved, so the
  * report only ever shows points that quote the transcript exactly and, on a
- * scored run, name an issue's hidden target or walk-away as the Deal rows show it.
+ * scored run, name one of their hidden targets or walk-aways as the Deal rows show it.
  */
 
 /** A point as saved: the sentence split around its quote (quote marks not included). */
@@ -61,21 +61,16 @@ export function quotesTurn(quote: string, turn: string): boolean {
   return false;
 }
 
-function isOneSentence(text: string): boolean {
-  if (!text.endsWith('.')) return false;
-  const segments = [...new Intl.Segmenter('en', { granularity: 'sentence' }).segment(text)].filter((s) => s.segment.trim());
-  return segments.length === 1;
-}
-
-/** "target $1,900" or "walk-away: $1,600": only spaces or punctuation between, and no further digits after. */
-function namesFigure(text: string, word: 'target' | 'walk-away', figure: string): boolean {
-  const pattern = new RegExp(`(?<![\\p{L}-])${word}[\\s:;,—–()-]*${escapeRegExp(figure)}(?![\\d]|[.,]\\d)`, 'u');
-  return pattern.test(text);
+/** Whether `text` contains `figure` exactly as the Deal row prints it, not as part of a longer number. */
+function containsFigure(text: string, figure: string): boolean {
+  if (!/\d/.test(figure)) return false;
+  return new RegExp(`(?<!\\d)(?<!\\d[.,])${escapeRegExp(figure)}(?![\\d]|[.,]\\d)`, 'u').test(text);
 }
 
 /**
- * Checks one sentence from the AI. `figures` is null on an Unscored run: then the
- * point's own words carry no figures at all. Returns the saved shape or why it failed.
+ * Checks one sentence from the AI. `figures` is null on an Unscored run: then no
+ * figure check applies. Returns the saved shape or why it failed. Sentence shape and
+ * length are asked for in the prompt but not checked here.
  */
 export function checkPoint(
   raw: string,
@@ -93,29 +88,13 @@ export function checkPoint(
   }
   const point: FeedbackPoint = { before, quote, after };
   const text = pointText(point);
-  if (text.length > 400) return { problem: `too long: ${text}` };
-  if (!isOneSentence(`${before}QUOTE${after}`.trim())) return { problem: `must be one sentence ending in a full stop: ${text}` };
   if (FORBIDDEN.test(text)) return { problem: `uses a forbidden word: ${text}` };
+  if (figures === null) return { point };
 
   const own = `${before} ${after}`;
-  if (figures === null) {
-    if (/[\d$€£¥%]/.test(own)) return { problem: `must not contain any figures outside the quote: ${text}` };
-    if ((own.match(/\p{L}{2,}/gu) ?? []).length < 3) return { problem: `must explain the quoted turn: ${text}` };
-    return { point };
+  if (!figures.some((f) => containsFigure(own, f.target) || containsFigure(own, f.walkAway))) {
+    return { problem: `must name, outside the quote, one of their hidden targets or walk-aways exactly as written: ${text}` };
   }
-
-  const named = figures.find(
-    (f) =>
-      new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(f.issue)}(?![\\p{L}\\p{N}])`, 'u').test(own) &&
-      (namesFigure(own, 'target', f.target) || namesFigure(own, 'walk-away', f.walkAway))
-  );
-  if (!named) {
-    return { problem: `must name an issue and "target" or "walk-away" followed directly by that issue's figure: ${text}` };
-  }
-  let rest = own;
-  for (const piece of [named.issue, named.target, named.walkAway]) rest = rest.split(piece).join(' ');
-  rest = rest.replace(/\b(target|walk-away)\b/g, ' ');
-  if ((rest.match(/\p{L}{2,}/gu) ?? []).length < 3) return { problem: `must explain what the quoted turn meant: ${text}` };
   return { point };
 }
 

@@ -46,9 +46,9 @@ ${input.deal?.issues
   .map((i) => `- ${i.name}: ${input.learnerSide} wanted it ${i.learnerWants}; agreed: ${i.agreed === null ? 'no agreement' : formatFigure(i.agreed, i.unit)}`)
   .join('\n')}
 
-In every point, outside the quote, name one issue exactly as written above (same letter case), then the word "target" or "walk-away" followed DIRECTLY by that issue's figure exactly as written above (for example: ${figures[0]!.issue} walk-away ${figures[0]!.walkAway}, or target ${figures[0]!.target}). Never put words such as "of" or "at" between the word and the figure. Then say in plain words what the quoted line meant against that figure.
-Example point: When you said "I can do that if we sign for two years", you offered a trade instead of a price, which kept the ${figures[0]!.issue} close to their walk-away ${figures[0]!.walkAway}.`
-    : `There are no figures for this run. Outside the quote, write no digits, no numbers and no currency or percent signs at all; say in plain words what the quoted line meant for the ${input.counterpartSide}.
+In every point, outside the quote, name one of these hidden figures exactly as written above (for example ${figures[0]!.target} or ${figures[0]!.walkAway}), say in your own words whose figure it is (what they hoped for, or the least they would accept), and what the quoted line meant against it.
+Example point: When you said "I can do that if we sign for two years", you offered a trade instead of a price, which kept things close to the ${figures[0]!.walkAway} they would at least accept.`
+    : `There are no hidden figures for this run. Say in plain words what the quoted line meant for the ${input.counterpartSide}.
 Example point: When you said "I understand the timing is hard for you", you showed the other side you had heard their worry, which made them easier to move.`;
 
   return `You are a negotiation coach writing short feedback for the side marked "${you}" after a practice negotiation in "${input.scenarioTitle}". Write to them as "you". ${outcome}
@@ -61,7 +61,7 @@ ${transcript}
 ${figureRules}
 
 Rules for every point:
-- Exactly one plain sentence, ending in a full stop, under 40 words. No other full stops, question marks or exclamation marks outside the quote.
+- One plain, natural sentence in your own words, ending in a full stop, under 40 words.
 - It quotes one turn spoken by "${you}": copy a short stretch of that turn's words exactly, letter for letter, starting and ending on whole words, inside straight double quotes ("..."). Use exactly one pair of double quotes per point and no other double quotes.
 - Plain everyday words. Never use these words: score, grade, out of, utility, reservation, BATNA, ZOPA, anchor.
 
