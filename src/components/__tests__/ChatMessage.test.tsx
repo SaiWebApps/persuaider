@@ -47,36 +47,16 @@ describe('ChatMessage', () => {
     expect(messageEl).toHaveClass('whitespace-pre-wrap');
   });
 
-  describe('mood indicator', () => {
-    it('renders mood indicator for assistant messages', () => {
-      render(
-        <ChatMessage role="assistant" content="test" timestamp={baseTimestamp} personaName="Alex" mood="skeptical" />
-      );
-      const indicator = screen.getByTestId('mood-indicator');
-      expect(indicator).toHaveAttribute('data-mood', 'skeptical');
-    });
+  it('labels the sender of each bubble', () => {
+    const { unmount } = render(<ChatMessage role="user" content="a" timestamp={baseTimestamp} personaName="Alex" />);
+    expect(screen.getByTestId('message-sender').textContent).toBe('You');
+    unmount();
+    render(<ChatMessage role="assistant" content="b" timestamp={baseTimestamp} personaName="Alex Chen" />);
+    expect(screen.getByTestId('message-sender').textContent).toBe('Alex Chen');
+  });
 
-    it('does not render mood indicator for user messages', () => {
-      render(
-        <ChatMessage role="user" content="test" timestamp={baseTimestamp} mood="firm" />
-      );
-      expect(screen.queryByTestId('mood-indicator')).toBeNull();
-    });
-
-    it('renders mood indicator with default for assistant when mood is null', () => {
-      render(
-        <ChatMessage role="assistant" content="test" timestamp={baseTimestamp} personaName="Alex" mood={null} />
-      );
-      const indicator = screen.getByTestId('mood-indicator');
-      expect(indicator).toHaveAttribute('data-mood', 'neutral');
-    });
-
-    it('renders mood indicator with default when mood is not provided', () => {
-      render(
-        <ChatMessage role="assistant" content="test" timestamp={baseTimestamp} personaName="Alex" />
-      );
-      const indicator = screen.getByTestId('mood-indicator');
-      expect(indicator).toHaveAttribute('data-mood', 'neutral');
-    });
+  it('carries no mood face or dot on bubbles', () => {
+    render(<ChatMessage role="assistant" content="test" timestamp={baseTimestamp} personaName="Alex" />);
+    expect(screen.queryByTestId('mood-indicator')).toBeNull();
   });
 });

@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+import { prisma } from '@/lib/db/client';
 import { ChatContainer } from '@/components/chat/ChatContainer';
 import { startOrResumeConversation } from '@/lib/conversation/start';
 import { AuthorizationError, NotFoundError } from '@/types';
@@ -7,6 +9,15 @@ import { readWinCondition } from '@/lib/codec/scenario';
 
 interface ChatPageProps {
   params: Promise<{ id: string }>;
+}
+
+/** The tab reads "<counterpart> · Persuaider", following the share page's title pattern. */
+export async function generateMetadata({ params }: ChatPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const session = await auth().catch(() => null);
+  if (!session) return { title: 'Persuaider' };
+  const persona = await prisma.persona.findUnique({ where: { id }, select: { name: true } }).catch(() => null);
+  return { title: persona ? `${persona.name} · Persuaider` : 'Persuaider' };
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {

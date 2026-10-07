@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { Button } from '@/components/ui/Button';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => Promise<void>;
@@ -36,22 +35,22 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="shrink-0 border-t-4 border-px-ink bg-px-paper px-3 py-3 sm:px-6 sm:py-4">
+      <div className="flex gap-2 items-stretch">
         <textarea
           data-testid="chat-input"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type your message... (Shift+Enter for new line, Enter to send)"
+          placeholder="Type your message…"
           rows={2}
           disabled={disabled || sending}
-          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+          className="flex-1 min-w-0 px-3 py-2 border-2 border-px-ink bg-px-paper text-px-ink placeholder:text-px-ink-2 font-serif text-base leading-snug resize-none focus:outline-none focus:border-px-cloth disabled:opacity-60 disabled:cursor-not-allowed"
         />
-        <Button
+        <button
           type="submit"
           disabled={!message.trim() || sending || disabled}
-          className="self-end"
+          className="shrink-0 min-h-11 px-5 bg-px-cloth text-px-on-cloth font-bold hover:bg-px-cloth-hover transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-px-cloth disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="send-button"
         >
           {sending ? (
@@ -65,9 +64,9 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
           ) : (
             'Send'
           )}
-        </Button>
+        </button>
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+      <p className="hidden sm:block text-xs text-px-ink-2 mt-2">
         Tip: Press Enter to send, Shift+Enter for new line
       </p>
     </form>

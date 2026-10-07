@@ -1,48 +1,34 @@
 'use client';
 
-import { MoodIndicator } from './MoodIndicator';
-
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   personaName?: string;
-  mood?: string | null;
 }
 
-export function ChatMessage({ role, content, timestamp, personaName, mood }: ChatMessageProps) {
+export function ChatMessage({ role, content, timestamp, personaName }: ChatMessageProps) {
   const isUser = role === 'user';
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`} data-testid={isUser ? 'user-message' : 'assistant-message'}>
-      {/* Mood avatar for assistant messages */}
-      {!isUser && (
-        <div className="flex-shrink-0 mr-2 mt-5">
-          <MoodIndicator mood={mood} size="sm" />
-        </div>
-      )}
-      <div className={`max-w-[70%]`}>
-        {/* Header */}
-        <div className={`flex items-center gap-2 mb-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-5`} data-testid={isUser ? 'user-message' : 'assistant-message'}>
+      <div className={`min-w-0 max-w-[88%] sm:max-w-[72%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="text-xs font-bold uppercase tracking-[0.04em] text-px-ink" data-testid="message-sender">
             {isUser ? 'You' : personaName || 'AI'}
           </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
+          <span className="text-xs tabular-nums text-px-ink-2">
             {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-
-        {/* Message Bubble */}
         <div
-          className={`
-            rounded-lg px-4 py-3 shadow-sm
-            ${isUser
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700'
-            }
-          `}
+          className={
+            isUser
+              ? 'bg-px-cloth text-px-on-cloth px-4 py-3'
+              : 'bg-px-paper-2 text-px-ink px-4 py-3'
+          }
         >
-          <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
+          <p className="font-serif text-base leading-relaxed whitespace-pre-wrap break-words">{content}</p>
         </div>
       </div>
     </div>
