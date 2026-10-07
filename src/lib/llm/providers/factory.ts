@@ -1,6 +1,7 @@
 import { OpenAIProvider } from './openai';
 import { AnthropicProvider } from './anthropic';
 import { GeminiProvider } from './gemini';
+import { getAiScript, ScriptedProvider } from './scripted';
 import { LLMProviderChain, ChainOptions } from './chain';
 import type { LLMProvider, FallbackConfig } from '../types';
 import { DEFAULT_FALLBACK_CONFIG } from '../types';
@@ -34,6 +35,9 @@ export class LLMProviderFactory {
    * @throws Error if the provider is not configured or API key is missing
    */
   static getProvider(providerName: typeof PROVIDER_ORDER[number]): LLMProvider {
+    const script = getAiScript();
+    if (script) return new ScriptedProvider(script);
+
     // Check if provider is already initialized
     if (this.providers.has(providerName)) {
       return this.providers.get(providerName)!;
@@ -115,6 +119,12 @@ export class LLMProviderFactory {
   static getProviderChain(options?: ChainOptions): LLMProviderChain {
     if (this.override) {
       return new LLMProviderChain(this.override, { ...DEFAULT_FALLBACK_CONFIG, providerOrder: this.override.map((p) => p.name), maxRetries: 1, initialDelayMs: 1 }, options);
+    }
+    // An acceptance run that sent a script (POST /api/scripted-ai) never calls the real AI.
+    const script = getAiScript();
+    if (script) {
+      const scripted = new ScriptedProvider(script);
+      return new LLMProviderChain([scripted], { ...DEFAULT_FALLBACK_CONFIG, providerOrder: [scripted.name], maxRetries: 1, initialDelayMs: 1 }, options);
     }
     // Get available providers based on the hardcoded order
     const availableProviders: LLMProvider[] = [];

@@ -68,6 +68,8 @@ phase "build";   npm run build >"$LOGS/build.log" 2>&1 || { tail -50 "$LOGS/buil
 
 PORT="$(node -e 'const s=require("net").createServer();s.listen(0,"localhost",()=>{console.log(s.address().port);s.close()})')"
 export PEERAXIS_DEMO_PORT="$PORT"
+# Lets a spec hand the app a scripted AI stand-in (POST /api/scripted-ai); 404 everywhere else.
+export PEERAXIS_ACCEPTANCE=1
 phase "start"
 set -m   # own process group, so cleanup can stop next and any worker it forks
 ./node_modules/.bin/next start -H localhost -p "$PORT" >"$LOGS/server.log" 2>&1 &
