@@ -33,10 +33,15 @@ export function FeltRealPrompt({ conversationId, initial }: { conversationId: st
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6" data-testid="felt-real">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Did the opponent feel real?</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">1 = not at all, 5 = completely.</p>
-      <div className="flex gap-2">
+    <section
+      className="flex flex-col gap-3 border-2 border-t-0 border-px-ink px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-8"
+      data-testid="felt-real"
+    >
+      <div>
+        <h3 className="text-lg font-bold">Did the opponent feel real?</h3>
+        <p className="font-serif text-sm text-px-ink-2">1 = not at all, 5 = completely.</p>
+      </div>
+      <div className="flex gap-1.5">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -45,10 +50,10 @@ export function FeltRealPrompt({ conversationId, initial }: { conversationId: st
             onClick={() => answer(n)}
             data-testid={`felt-real-${n}`}
             aria-pressed={value === n}
-            className={`w-10 h-10 rounded-md border text-sm font-medium ${
+            className={`h-11 w-12 border-2 text-sm font-bold tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-px-ink disabled:opacity-60 ${
               value === n
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:border-indigo-400'
+                ? 'bg-px-cloth text-px-on-cloth border-px-cloth'
+                : 'bg-px-paper text-px-ink border-px-ink hover:bg-px-paper-2'
             }`}
           >
             {n}
@@ -56,11 +61,11 @@ export function FeltRealPrompt({ conversationId, initial }: { conversationId: st
         ))}
       </div>
       {value !== null && (
-        <p className="mt-2 text-sm text-green-700 dark:text-green-300" data-testid="felt-real-thanks">
+        <p className="w-full font-serif text-sm" data-testid="felt-real-thanks">
           Thanks. Your answer: {value}/5.
         </p>
       )}
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-    </div>
+      {error && <p className="w-full text-sm text-red-700 dark:text-red-400">{error}</p>}
+    </section>
   );
 }

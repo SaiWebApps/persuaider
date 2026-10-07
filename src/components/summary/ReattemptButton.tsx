@@ -34,11 +34,11 @@ export function ReattemptButton({ conversationId, personaId }: { conversationId:
         onClick={reattempt}
         disabled={busy}
         data-testid="reattempt"
-        className="w-full px-6 py-3 border border-indigo-600 text-indigo-700 dark:text-indigo-300 text-center rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-medium disabled:opacity-60"
+        className="min-h-12 w-full px-6 bg-px-cloth text-px-on-cloth text-center font-bold hover:bg-px-cloth-hover transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-px-ink disabled:opacity-60"
       >
         {busy ? 'Starting…' : 'Try again'}
       </button>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-700 dark:text-red-400">{error}</p>}
     </div>
   );
 }
