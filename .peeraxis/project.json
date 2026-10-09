@@ -16,6 +16,10 @@
     ".env.peeraxis"
   ],
   "mainBranch": "main",
+  "publish": {
+    "command": "git push --quiet origin main",
+    "link": "https://persuaider.vercel.app"
+  },
   "minutes": {
     "setup": 10,
     "check": 20,
