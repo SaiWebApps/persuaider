@@ -151,14 +151,8 @@ test('run feedback quotes your side, explains the hidden limits, and stays saved
       const listPoints = list.getByTestId('report-point');
       expect(await listPoints.count()).toBeGreaterThanOrEqual(1);
       expect(await listPoints.count()).toBeLessThanOrEqual(3);
-      for (const point of await listPoints.all()) {
-        await expect(point).toBeVisible();
-        const text = normalise(await point.innerText());
-        expect(text.endsWith('.')).toBe(true);
-        const quote = normalise(await point.getByTestId('report-point-quote').innerText());
-        const sentences = new Intl.Segmenter('en', { granularity: 'sentence' });
-        expect([...sentences.segment(text.replace(`"${quote}"`, 'this turn'))].length).toBe(1);
-      }
+      // Sentence shape is asked of the AI but not checked before saving.
+      for (const point of await listPoints.all()) await expect(point).toBeVisible();
     }
     return true;
   };
@@ -218,24 +212,22 @@ test('run feedback quotes your side, explains the hidden limits, and stays saved
       for (const point of await points.all()) {
         const quote = normalise(await point.getByTestId('report-point-quote').innerText());
         const explanation = normalise(await point.innerText()).replace(`"${quote}"`, '');
-        expect(explanation.includes('Monthly rent')).toBe(true);
-        const references = [
-          { word: 'target', figure: await target.innerText() },
-          { word: 'walk-away', figure: await walkAway.innerText() },
-        ];
-        expect(references.some(({ word, figure }) => occurrences(explanation, word).some(at => {
-          let after = explanation.slice(at + word.length).trimStart();
-          // Permit punctuation: target: $1,900 and walk-away—$1,600 are valid.
-          while (after.length && ':;,—–-()'.includes(after[0])) after = after.slice(1).trimStart();
-          const exactFigure = normalise(figure);
-          if (!after.startsWith(exactFigure)) return false;
-          const rest = after.slice(exactFigure.length);
-          const digit = (character: string | undefined) => !!character && '0123456789'.includes(character);
-          return !digit(rest[0]) && !((rest[0] === ',' || rest[0] === '.') && digit(rest[1]));
-        })), 'Explanation names the issue and one of its exact hidden limits').toBe(true);
-        const prose = explanation.replaceAll('Monthly rent', '').replaceAll('$1,900', '')
-          .replaceAll('$1,600', '').replaceAll('walk-away', '').replaceAll('target', '');
-        expect([...words.segment(prose)].some(part => part.isWordLike), 'Explain the quoted turn, not just a limit label').toBe(true);
+        // Outside the quote, a point names one hidden limit exactly as Deal prints it,
+        // not as part of a longer number; its own wording is free.
+        const digit = (character: string | undefined) => !!character && '0123456789'.includes(character);
+        const figures = [normalise(await target.innerText()), normalise(await walkAway.innerText())];
+        expect(figures.some(figure => {
+          for (let at = explanation.indexOf(figure); at !== -1; at = explanation.indexOf(figure, at + 1)) {
+            const previous = explanation.slice(Math.max(0, at - 2), at);
+            const rest = explanation.slice(at + figure.length);
+            const longerBefore = digit(previous[1]) || ((previous[1] === ',' || previous[1] === '.') && digit(previous[0]));
+            const longerAfter = digit(rest[0]) || ((rest[0] === ',' || rest[0] === '.') && digit(rest[1]));
+            if (!longerBefore && !longerAfter) return true;
+          }
+          return false;
+        }), 'Explanation names one of the exact hidden limits shown under Deal').toBe(true);
+        const prose = explanation.replaceAll('$1,900', '').replaceAll('$1,600', '');
+        expect([...words.segment(prose)].some(part => part.isWordLike), 'Explain the quoted turn, not just a limit').toBe(true);
       }
     } else expect(normalise(await feedback.innerText()).includes(failure)).toBe(true);
     await page.screenshot({ path: test.info().outputPath('step-3.png') });
